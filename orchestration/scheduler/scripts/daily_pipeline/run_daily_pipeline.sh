@@ -33,6 +33,28 @@ fail() {
   exit 1
 }
 
+# Retries a command up to MAX_RETRIES times before failing.
+# Architecture NFR: "Cron retries / Idempotence" (Batch Processing Reliability).
+# Each step is idempotent: jobs write to partitioned paths and overwrite on re-run.
+MAX_RETRIES=2
+RETRY_SLEEP=60   # seconds between retry attempts
+
+retry_step() {
+  local step_name="$1"
+  shift
+  local attempt=1
+  while [ "$attempt" -le "$MAX_RETRIES" ]; do
+    log "${step_name} — attempt ${attempt}/${MAX_RETRIES}"
+    if "$@"; then
+      return 0
+    fi
+    log "${step_name} failed on attempt ${attempt}. Retrying in ${RETRY_SLEEP}s ..."
+    attempt=$(( attempt + 1 ))
+    sleep "$RETRY_SLEEP"
+  done
+  fail "${step_name} failed after ${MAX_RETRIES} attempts. Pipeline aborted."
+}
+
 # ---------------------------------------------------------------------------
 # Derive EVENT_DATE — yesterday in UTC
 # ---------------------------------------------------------------------------
@@ -61,11 +83,11 @@ log "======================================================"
 
 log "Step 1/3: Running ingestion (MODE=incremental, EVENT_DATE=${EVENT_DATE}) ..."
 
-docker compose run --rm \
-  -e MODE=incremental \
-  -e EVENT_DATE="${EVENT_DATE}" \
-  ingestion \
-  || fail "Step 1 failed: ingestion exited with a non-zero status. Pipeline aborted."
+retry_step "Step 1/3 [ingestion]" \
+  docker compose run --rm \
+    -e MODE=incremental \
+    -e EVENT_DATE="${EVENT_DATE}" \
+    ingestion
 
 log "Step 1/3: Ingestion completed successfully."
 
@@ -78,11 +100,11 @@ PROCESSING_WINDOW_DAYS="${PROCESSING_WINDOW_DAYS:-7}"
 
 log "Step 2/3: Running processing (MODE=incremental, WINDOW=${PROCESSING_WINDOW_DAYS}d) ..."
 
-docker compose run --rm \
-  -e MODE=incremental \
-  -e PROCESSING_WINDOW_DAYS="${PROCESSING_WINDOW_DAYS}" \
-  processing \
-  || fail "Step 2 failed: processing exited with a non-zero status. Pipeline aborted."
+retry_step "Step 2/3 [processing]" \
+  docker compose run --rm \
+    -e MODE=incremental \
+    -e PROCESSING_WINDOW_DAYS="${PROCESSING_WINDOW_DAYS}" \
+    processing
 
 log "Step 2/3: Processing completed successfully."
 
@@ -92,10 +114,10 @@ log "Step 2/3: Processing completed successfully."
 
 log "Step 3/3: Running recommendation_loader ..."
 
-docker compose run --rm \
-  -e MODE=incremental \
-  recommendation_loader \
-  || fail "Step 3 failed: recommendation_loader exited with a non-zero status. Pipeline aborted."
+retry_step "Step 3/3 [recommendation_loader]" \
+  docker compose run --rm \
+    -e MODE=incremental \
+    recommendation_loader
 
 log "Step 3/3: Recommendation loader completed successfully."
 
