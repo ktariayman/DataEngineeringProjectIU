@@ -1,0 +1,90 @@
+# Serving Layer — PostgreSQL + Recommendation Loader + Recommendation API
+#
+# Architecture note: The diagram labels "Serving Microservice (Docker Compose - 2 containers)"
+# referring to recommendation_loader + recommendation_api.
+# PostgreSQL (Serving Store) lives in this same file for startup-order reasons
+# (both serving containers depend_on postgres:healthy).
+
+services:
+
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-recommendations}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../serving_store/postgres/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - uni_net
+
+  recommendation_loader:
+    build:
+      context: ../../microservices/serving/recommendation_loader/docker
+      dockerfile: Dockerfile
+    image: uni/recommendation-loader:1.0.0   # Versioned image (architecture: versioned images)
+    container_name: recommendation_loader
+    user: "1000:1000"                         # Non-root container (Security NFR)
+    # No restart policy — triggered by scheduler after processing completes.
+    environment:
+      - HDFS_URL=hdfs://namenode:9000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-recommendations}
+      - MODE=${MODE:-incremental}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      namenode:
+        condition: service_healthy
+    networks:
+      - uni_net
+
+  recommendation_api:
+    build:
+      context: ../../microservices/serving/recommendation_api/docker
+      dockerfile: Dockerfile
+    image: uni/recommendation-api:1.0.0      # Versioned image (architecture: versioned images)
+    container_name: recommendation_api
+    restart: unless-stopped
+    # NOTE: HTTPS (Security NFR) — TLS must be terminated at the reverse proxy
+    # layer (e.g. nginx / Traefik) in front of this container on port 443.
+    # In local dev, HTTP on port 8000 is acceptable.
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-recommendations}
+      - JWT_SECRET=${JWT_SECRET:-changeme}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - uni_net
+
+volumes:
+  postgres_data:
+
+networks:
+  uni_net:
+    external: true

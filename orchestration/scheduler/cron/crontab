@@ -1,0 +1,9 @@
+# Cron schedule for the University Recommendation System pipeline.
+# All times are UTC.
+#
+# Runs the daily incremental pipeline every day at 02:00 UTC.
+# Logs are appended to /var/log/pipeline.log.
+#
+# Validate this expression at: https://crontab.guru/#0_2_*_*_*
+
+0 2 * * * /scripts/daily_pipeline/run_daily_pipeline.sh >> /var/log/pipeline.log 2>&1

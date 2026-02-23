@@ -1,0 +1,29 @@
+# Batch Processing Microservice — PySpark + Spark SQL (spark:3.x)
+# Not restarted automatically — triggered by scheduler only.
+
+services:
+
+  processing:
+    build:
+      context: ../../microservices/processing/docker
+      dockerfile: Dockerfile
+    image: uni/processing:1.0.0        # Versioned image tag (architecture: versioned images)
+    container_name: processing
+    user: "1000:1000"                  # Non-root container (Security NFR)
+    # No restart policy — this is a batch job, not a long-running service.
+    # The scheduler triggers it via `docker compose run --rm processing`.
+    environment:
+      - HDFS_URL=hdfs://namenode:9000
+      - MODE=${MODE:-incremental}
+      - PROCESSING_WINDOW_DAYS=${PROCESSING_WINDOW_DAYS:-7}
+    volumes:
+      - ../../microservices/processing:/app
+    depends_on:
+      namenode:
+        condition: service_healthy
+    networks:
+      - uni_net
+
+networks:
+  uni_net:
+    external: true

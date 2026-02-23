@@ -1,0 +1,24 @@
+# Root Docker Compose — wires all service groups together.
+# Requires Docker Compose v2.20+
+#
+# Prerequisites:
+#   1. Create the shared network once:
+#      docker network create uni_net
+#
+#   2. Copy .env.example → .env and fill in secrets before running.
+#
+# To start all long-running services:
+#   docker compose up -d
+#
+# The ingestion, processing, and recommendation_loader services are NOT
+# started here — they are triggered by the scheduler scripts only.
+
+include:
+  - orchestration/docker_compose/storage.yml
+  - orchestration/docker_compose/ingestion.yml
+  - orchestration/docker_compose/processing.yml
+  - orchestration/docker_compose/serving.yml
+
+networks:
+  uni_net:
+    external: true

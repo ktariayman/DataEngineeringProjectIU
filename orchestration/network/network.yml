@@ -1,0 +1,7 @@
+# Docker bridge network shared by all microservices.
+# Create once before first `docker compose up`:
+#   docker network create uni_net
+
+networks:
+  uni_net:
+    driver: bridge

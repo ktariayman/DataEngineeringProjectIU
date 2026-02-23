@@ -1,0 +1,29 @@
+# Ingestion Microservice — PySpark (spark:3.x)
+# Not restarted automatically — triggered by scheduler only.
+
+services:
+
+  ingestion:
+    build:
+      context: ../../microservices/ingestion/docker
+      dockerfile: Dockerfile
+    image: uni/ingestion:1.0.0        # Versioned image tag (architecture: versioned images)
+    container_name: ingestion
+    user: "1000:1000"                  # Non-root container (Security NFR)
+    # No restart policy — this is a batch job, not a long-running service.
+    # The scheduler triggers it via `docker compose run --rm ingestion`.
+    environment:
+      - HDFS_URL=hdfs://namenode:9000
+      - MODE=${MODE:-incremental}
+      - EVENT_DATE=${EVENT_DATE:-}
+    volumes:
+      - ../../microservices/ingestion:/app
+    depends_on:
+      namenode:
+        condition: service_healthy
+    networks:
+      - uni_net
+
+networks:
+  uni_net:
+    external: true
