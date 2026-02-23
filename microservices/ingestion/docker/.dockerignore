@@ -1,0 +1,36 @@
+# ── .dockerignore for ingestion microservice ──────────────────────────────
+# Keeps the Docker image lean and avoids leaking test data / secrets.
+
+# Tests
+tests/
+**/test_*.py
+conftest.py
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# IDE / editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+.gitkeep
+
+# Documentation
+*.md
+LICENSE
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Checksum manifests (generated at runtime, not baked into image)
+checksums/

@@ -1,0 +1,127 @@
+##############################################################################
+# Ingestion Microservice – Configuration
+# Dataset : EdNet  (https://github.com/riiid/ednet)
+# Engine  : PySpark 3.x
+##############################################################################
+
+# ── Governance ─────────────────────────────────────────────────────────────
+# License   : CC BY-NC 4.0 – non-commercial use only
+# Citation  : Choi et al., "EdNet: A Large-Scale Hierarchical Dataset in
+#             Education", 2020. https://arxiv.org/abs/1912.03072
+# Data DOI  : https://github.com/riiid/ednet
+# IMPORTANT : Any derivative work or deployment must comply with the
+#             CC BY-NC 4.0 license terms and cite the original work.
+
+spark:
+  app_name: "ednet-ingestion"
+  master: "local[*]"                      # override via env / spark-submit
+  config:
+    # ── Reliability ──────────────────────────────────────────────────
+    spark.sql.session.timeZone: "UTC"
+    spark.sql.sources.partitionOverwriteMode: "dynamic"
+    spark.task.maxFailures: "4"           # retry failed tasks up to 4 times
+    spark.network.timeout: "300s"         # tolerate slow HDFS responses
+    spark.executor.heartbeatInterval: "60s"
+
+    # ── Scalability ──────────────────────────────────────────────────
+    spark.sql.adaptive.enabled: "true"
+    spark.sql.adaptive.coalescePartitions.enabled: "true"
+    spark.sql.adaptive.skewJoin.enabled: "true"
+    spark.sql.autoBroadcastJoinThreshold: "10485760"  # 10 MB (lectures/questions are small)
+    spark.sql.shuffle.partitions: "200"   # default; AQE will coalesce
+    spark.sql.parquet.compression.codec: "snappy"
+    spark.sql.files.maxPartitionBytes: "134217728"    # 128 MB per partition
+
+    # ── Memory management ────────────────────────────────────────────
+    spark.driver.memory: "2g"
+    spark.executor.memory: "4g"
+    spark.memory.fraction: "0.6"
+    spark.memory.storageFraction: "0.5"
+
+    # ── Dynamic resource allocation ──────────────────────────────────
+    spark.dynamicAllocation.enabled: "true"
+    spark.dynamicAllocation.minExecutors: "1"
+    spark.dynamicAllocation.maxExecutors: "10"
+    spark.dynamicAllocation.executorIdleTimeout: "60s"
+
+# ── Source CSV locations (local / mounted volume) ──────────────────────────
+sources:
+  kt4:
+    path: "EdNet-KT4/"              # directory of per-user CSVs
+    glob_pattern: "*.csv"
+    has_header: true
+    delimiter: "\t"                       # EdNet KT files are TSV
+    encoding: "utf-8"
+
+  lectures:
+    path: "EdNet-Contents/contents/lectures.csv"
+    has_header: true
+    delimiter: ","
+    encoding: "utf-8"
+
+  questions:
+    path: "EdNet-Contents/contents/questions.csv"
+    has_header: true
+    delimiter: ","
+    encoding: "utf-8"
+
+# ── HDFS / raw-zone write targets ─────────────────────────────────────────
+targets:
+  kt4:
+    path: "hdfs://namenode:9000/data/raw/kt4/partitions_by_event_date"
+    format: "parquet"
+    mode: "append"
+    partition_by:
+      - "event_date"
+
+  lectures:
+    path: "hdfs://namenode:9000/data/raw/content/lectures"
+    format: "parquet"
+    mode: "overwrite"
+
+  questions:
+    path: "hdfs://namenode:9000/data/raw/content/questions"
+    format: "parquet"
+    mode: "overwrite"
+
+# ── Structural validation thresholds ───────────────────────────────────────
+validation:
+  max_null_ratio: 0.05                    # fail if > 5 % nulls in key cols
+  min_row_count: 1                        # at least 1 row per source
+  required_columns:
+    kt4:
+      - "timestamp"
+      - "action_type"
+      - "item_id"
+    lectures:
+      - "lecture_id"
+    questions:
+      - "question_id"
+      - "correct_answer"
+
+# ── Compaction settings ────────────────────────────────────────────────────
+compaction:
+  target_file_size_mb: 128                # target ~128 MB per file
+  max_file_size_mb: 512                   # upper bound
+  partition_by:
+    - "event_date"
+
+# ── Checksum verification (Security) ──────────────────────────────────────
+# On initial run: computes SHA-256 manifests and saves them.
+# On daily runs : verifies sources against stored manifests.
+checksum:
+  enabled: true
+  manifest_dir: "checksums"               # local dir to store .sha256.json files
+
+# ── Privacy guardrails ─────────────────────────────────────────────────────
+# Column allowlist is derived from schemas.py ALLOWED_COLUMNS.
+# PII scan checks column names against regex patterns before any write.
+privacy:
+  pii_scan_strict: true                   # raise on suspected PII columns
+  enforce_allowlist: true                 # drop any unexpected columns
+
+# ── Lineage & audit trail (Governance) ─────────────────────────────────────
+lineage:
+  enabled: true
+  output_dir: "lineage"                   # local dir for JSON lineage records
+  pipeline_version: "1.0.0"              # semver — bump on pipeline changes

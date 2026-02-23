@@ -1,0 +1,4 @@
+# Ingestion microservice – Python dependencies
+# PySpark 3.x
+pyspark>=3.4,<4.0
+pyyaml>=6.0
