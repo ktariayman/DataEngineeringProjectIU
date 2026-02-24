@@ -81,11 +81,11 @@ log "======================================================"
 # Step 1 — Ingestion (incremental — yesterday's data only)
 # ---------------------------------------------------------------------------
 
-log "Step 1/3: Running ingestion (MODE=incremental, EVENT_DATE=${EVENT_DATE}) ..."
+log "Step 1/3: Running ingestion (MODE=daily, EVENT_DATE=${EVENT_DATE}) ..."
 
 retry_step "Step 1/3 [ingestion]" \
   docker compose run --rm \
-    -e MODE=incremental \
+    -e MODE=daily \
     -e EVENT_DATE="${EVENT_DATE}" \
     ingestion
 

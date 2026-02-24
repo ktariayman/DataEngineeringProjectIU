@@ -40,10 +40,10 @@ log "======================================================"
 # Step 1 — Ingestion (full historical mode)
 # ---------------------------------------------------------------------------
 
-log "Step 1/3: Running ingestion (MODE=initial_load) ..."
+log "Step 1/3: Running ingestion (MODE=initial) ..."
 
 docker compose run --rm \
-  -e MODE=initial_load \
+  -e MODE=initial \
   ingestion \
   || fail "Step 1 failed: ingestion exited with a non-zero status."
 

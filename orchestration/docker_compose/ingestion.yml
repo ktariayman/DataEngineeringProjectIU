@@ -5,19 +5,21 @@ services:
 
   ingestion:
     build:
-      context: ../../microservices/ingestion/docker
-      dockerfile: Dockerfile
-    image: uni/ingestion:1.0.0        # Versioned image tag (architecture: versioned images)
+      context: ../../microservices/ingestion 
+      dockerfile: docker/Dockerfile
+    image: uni/ingestion:1.0.0    # Versioned image tag (architecture: versioned images)
     container_name: ingestion
     user: "1000:1000"                  # Non-root container (Security NFR)
     # No restart policy — this is a batch job, not a long-running service.
     # The scheduler triggers it via `docker compose run --rm ingestion`.
     environment:
       - HDFS_URL=hdfs://namenode:9000
-      - MODE=${MODE:-incremental}
-      - EVENT_DATE=${EVENT_DATE:-}
+      - MODE=${MODE:-daily}     # 'initial' (Script A) | 'daily' (Script B / cron)
+      - EVENT_DATE=${EVENT_DATE:-}  # YYYY-MM-DD UTC, set by daily pipeline script
     volumes:
-      - ../../microservices/ingestion:/app
+      # Mount at the sub-path that matches COPY destinations in the Dockerfile
+      # and the ENTRYPOINT path: /app/microservices/ingestion/pipelines/...
+      - ../../microservices/ingestion:/app/microservices/ingestion
     depends_on:
       namenode:
         condition: service_healthy
