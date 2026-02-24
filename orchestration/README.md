@@ -225,9 +225,9 @@ bash orchestration/scheduler/scripts/initial_load/run_initial_load.sh
 **What it does, in order:**
 
 ```
-Step 1/3  →  docker compose run --rm ingestion   (MODE=initial_load)
-Step 2/3  →  docker compose run --rm processing  (MODE=initial_load)
-Step 3/3  →  docker compose run --rm recommendation_loader (MODE=initial_load)
+Step 1/3  →  docker compose run --rm ingestion   (MODE=initial)
+Step 2/3  →  docker compose run --rm processing  (MODE=initial)
+Step 3/3  →  docker compose run --rm recommendation_loader (MODE=initial)
 ```
 
 Each step must exit with code `0` before the next begins. If any step fails, the script aborts immediately and prints the failing step.
@@ -237,7 +237,7 @@ Each step must exit with code `0` before the next begins. If any step fails, the
 [2026-02-23T15:00:00Z] ======================================================
 [2026-02-23T15:00:00Z]   Initial Load — starting
 [2026-02-23T15:00:00Z] ======================================================
-[2026-02-23T15:00:01Z] Step 1/3: Running ingestion (MODE=initial_load) ...
+[2026-02-23T15:00:01Z] Step 1/3: Running ingestion (MODE=initial) ...
 [2026-02-23T17:12:04Z] Step 1/3: Ingestion completed successfully.
 [2026-02-23T17:12:04Z] Step 2/3: Running processing (MODE=initial_load) ...
 ...
@@ -262,13 +262,13 @@ bash orchestration/scheduler/scripts/daily_pipeline/run_daily_pipeline.sh
 Derive EVENT_DATE = yesterday in UTC  (e.g. 2026-02-22)
 
 Step 1/3  →  docker compose run --rm ingestion
-             (MODE=incremental, EVENT_DATE=2026-02-22)
+             (MODE=daily, EVENT_DATE=2026-02-22)
 
 Step 2/3  →  docker compose run --rm processing
-             (MODE=incremental, PROCESSING_WINDOW_DAYS=7)
+             (MODE=daily, PROCESSING_WINDOW_DAYS=7)
 
 Step 3/3  →  docker compose run --rm recommendation_loader
-             (MODE=incremental)
+             (MODE=daily)
 ```
 
 **To override the processing window:**
@@ -519,7 +519,7 @@ docker compose up -d postgres   # Start fresh
 docker compose logs ingestion    # or processing / recommendation_loader
 
 # Re-run the specific step manually for debugging
-docker compose run --rm -e MODE=incremental -e EVENT_DATE=2026-02-22 ingestion
+docker compose run --rm -e MODE=daily -e EVENT_DATE=2026-02-22 ingestion
 ```
 
 The batch container's exit code drives the pipeline — a non-zero exit aborts everything. Fix the root error in the microservice, then re-run the pipeline script.

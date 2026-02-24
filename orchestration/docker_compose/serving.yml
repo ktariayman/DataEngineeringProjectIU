@@ -31,8 +31,8 @@ services:
 
   recommendation_loader:
     build:
-      context: ../../microservices/serving/recommendation_loader/docker
-      dockerfile: Dockerfile
+      context: ../../microservices/serving/recommendation_loader
+      dockerfile: docker/Dockerfile
     image: uni/recommendation-loader:1.0.0   # Versioned image (architecture: versioned images)
     container_name: recommendation_loader
     user: "1000:1000"                         # Non-root container (Security NFR)
@@ -43,7 +43,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-recommendations}
-      - MODE=${MODE:-incremental}
+      - MODE=${MODE:-daily}     # 'initial' (Script A) | 'daily' (Script B)
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,8 +54,8 @@ services:
 
   recommendation_api:
     build:
-      context: ../../microservices/serving/recommendation_api/docker
-      dockerfile: Dockerfile
+      context: ../../microservices/serving/recommendation_api
+      dockerfile: docker/Dockerfile
     image: uni/recommendation-api:1.0.0      # Versioned image (architecture: versioned images)
     container_name: recommendation_api
     restart: unless-stopped
@@ -70,6 +70,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-recommendations}
       - JWT_SECRET=${JWT_SECRET:-changeme}
+      - API_KEY=${API_KEY:-dev-api-key}   # Shared key for POST /v1/auth/token
     depends_on:
       postgres:
         condition: service_healthy
