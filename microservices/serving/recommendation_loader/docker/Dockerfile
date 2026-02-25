@@ -1,50 +1,64 @@
-FROM python:3.11-slim
+##############################################################################
+# Recommendation Loader – Docker Image
+#
+# Base       : Apache Spark 3.5.1 + Python 3
+# Entrypoint : spark-submit that loads curated HDFS Parquet → PostgreSQL
+# Security   : Runs as non-root user (sparkuser, UID 1000)
+##############################################################################
 
-# ── Image metadata ────────────────────────────────────────────────────
-ARG IMAGE_VERSION=1.0.0
-LABEL maintainer="data-engineering-team" \
-      version="${IMAGE_VERSION}" \
-      description="Recommendation Loader — HDFS Parquet to PostgreSQL batch job" \
-      org.opencontainers.image.source="microservices/serving/recommendation_loader"
+FROM apache/spark:3.5.1-python3
+
+LABEL maintainer="ednet-team"
+LABEL service="recommendation-loader"
+LABEL version="1.0.0"
 
 USER root
 
-# ── System deps ───────────────────────────────────────────────────────
-# libpq-dev: required by psycopg2. openjdk-17-jre: required by pyarrow HDFS.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpq-dev \
-        openjdk-17-jre-headless \
+        python3-pip curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN id -u sparkuser 2>/dev/null || useradd -m -u 1000 sparkuser
 
 WORKDIR /app
 
-# ── Python deps ───────────────────────────────────────────────────────
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# ── PostgreSQL JDBC driver ────────────────────────────────────────────────
+RUN curl -fSL -o /opt/spark/jars/postgresql-42.7.1.jar \
+    https://jdbc.postgresql.org/download/postgresql-42.7.1.jar
 
-# ── Application code ──────────────────────────────────────────────────
-COPY src/      /app/microservices/serving/recommendation_loader/src/
+# ── Python dependencies ──────────────────────────────────────────────────
+COPY requirements.txt /tmp/requirements.txt
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+
+# ── Application code ─────────────────────────────────────────────────────
+COPY config/    /app/microservices/serving/recommendation_loader/config/
+COPY src/       /app/microservices/serving/recommendation_loader/src/
 COPY pipelines/ /app/microservices/serving/recommendation_loader/pipelines/
 
-# __init__.py chain for package imports
-RUN mkdir -p /app/microservices/serving/recommendation_loader \
-    && touch /app/microservices/__init__.py \
-    && touch /app/microservices/serving/__init__.py \
-    && touch /app/microservices/serving/recommendation_loader/__init__.py \
-    && touch /app/microservices/serving/recommendation_loader/src/__init__.py \
-    && touch /app/microservices/serving/recommendation_loader/pipelines/__init__.py
+# ── Create __init__.py along the package hierarchy for Python imports ────
+RUN touch /app/microservices/__init__.py \
+    /app/microservices/serving/__init__.py \
+    /app/microservices/serving/recommendation_loader/__init__.py
 
-# ── Security: non-root user (UID 1000 matches compose user: "1000:1000") ─
-RUN groupadd -r -g 1000 loaderuser && useradd -r -u 1000 -g loaderuser -d /app loaderuser \
-    && chown -R loaderuser:loaderuser /app
-USER loaderuser
+# ── Health check ─────────────────────────────────────────────────────────
+COPY docker/healthcheck.py /app/healthcheck.py
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD ["python3", "/app/healthcheck.py"]
 
-# ── Runtime ───────────────────────────────────────────────────────────
-ENV PYTHONPATH=/app \
-    PYTHONUNBUFFERED=1 \
-    JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+# ── Permissions ──────────────────────────────────────────────────────────
+RUN chown -R sparkuser:sparkuser /app
 
-# Shell form so $MODE and $GENERATION_DATE env vars expand at runtime
-ENTRYPOINT python /app/microservices/serving/recommendation_loader/pipelines/load_recommendations.py \
-    --mode ${MODE:-daily} \
-    ${GENERATION_DATE:+--generation-date $GENERATION_DATE}
+USER sparkuser
+
+ENV LOG_FORMAT=json \
+    LOG_LEVEL=INFO \
+    PYTHONUNBUFFERED=1
+
+# ── Entrypoint ───────────────────────────────────────────────────────────
+ENTRYPOINT spark-submit \
+    --master local[*] \
+    --jars /opt/spark/jars/postgresql-42.7.1.jar \
+    --driver-class-path /opt/spark/jars/postgresql-42.7.1.jar \
+    /app/microservices/serving/recommendation_loader/pipelines/load_to_postgres.py \
+    --config /app/microservices/serving/recommendation_loader/config/loader_config.yaml

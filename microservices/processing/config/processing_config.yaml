@@ -1,0 +1,146 @@
+##############################################################################
+# Processing Microservice – Configuration
+#
+# EdNet data processing pipeline: raw zone → curated zone.
+# Reads  : HDFS raw zone   (Parquet produced by the ingestion service)
+# Writes : HDFS curated zone (aggregated features, user vectors, recs)
+##############################################################################
+
+# ── Spark runtime ─────────────────────────────────────────────────────────
+spark:
+  app_name: ednet-processing
+  master: spark://master:7077          # override with local[*] for dev
+  config:
+    # Adaptive Query Execution  (Scalability)
+    spark.sql.adaptive.enabled: "true"
+    spark.sql.adaptive.coalescePartitions.enabled: "true"
+    # Dynamic allocation  (Scalability)
+    spark.dynamicAllocation.enabled: "true"
+    spark.dynamicAllocation.minExecutors: "1"
+    spark.dynamicAllocation.maxExecutors: "8"
+    # Memory
+    spark.executor.memory: "2g"
+    spark.driver.memory: "2g"
+    # Shuffle partitions
+    spark.sql.shuffle.partitions: "200"
+    # Serialiser
+    spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+
+# ── Input sources (raw zone – produced by ingestion) ─────────────────────
+sources:
+  kt4:
+    path: "hdfs://namenode:9000/data/raw/kt4/partitions_by_event_date"
+    format: parquet
+  lectures:
+    path: "hdfs://namenode:9000/data/raw/content/lectures"
+    format: parquet
+  questions:
+    path: "hdfs://namenode:9000/data/raw/content/questions"
+    format: parquet
+
+# ── Output targets (curated zone) ────────────────────────────────────────
+targets:
+  aggregated_student_features:
+    path: "hdfs://namenode:9000/data/curated/aggregated_student_features"
+    format: parquet
+    mode: overwrite
+    partition_by: []
+  user_vectors:
+    path: "hdfs://namenode:9000/data/curated/user_vectors"
+    format: parquet
+    mode: overwrite
+    partition_by: []
+  recommendations_batch:
+    path: "hdfs://namenode:9000/data/curated/recommendations_batch"
+    format: parquet
+    mode: overwrite
+    partition_by: []
+
+# ── Feature engineering ──────────────────────────────────────────────────
+feature_engineering:
+  correctness_join: true          # join KT4 with questions for is_correct
+  time_features: true             # extract hour_of_day, day_of_week
+  response_time_cap_ms: 300000    # cap at 5 minutes (outlier removal)
+
+# ── Feature aggregation ─────────────────────────────────────────────────
+feature_aggregation:
+  min_interactions: 5             # drop students with fewer interactions
+
+# ── Similarity computation ───────────────────────────────────────────────
+similarity:
+  method: cosine                  # cosine similarity between user vectors
+  top_k: 10                      # top-K similar users per student
+  feature_columns:
+    - accuracy_rate
+    - avg_response_time_ms
+    - total_interactions
+    - unique_questions_attempted
+    - unique_lectures_viewed
+    - active_days
+
+# ── Processing window (incremental mode) ────────────────────────────────
+processing_window:
+  window_days: 7                  # reprocess last N days of KT4 data
+
+# ── Data quality  (Reliability) ─────────────────────────────────────────
+data_quality:
+  max_null_ratio: 0.10
+  min_row_count: 1
+  required_output_columns:
+    aggregated_student_features:
+      - user_id
+      - total_interactions
+      - accuracy_rate
+    user_vectors:
+      - user_id
+    recommendations_batch:
+      - user_id
+      - recommended_user_id
+      - similarity_score
+
+# ── Privacy  (Data Privacy) ─────────────────────────────────────────────
+privacy:
+  pii_scan_strict: true
+  enforce_allowlist: true
+  allowed_output_columns:
+    aggregated_student_features:
+      - user_id
+      - total_interactions
+      - correct_count
+      - incorrect_count
+      - accuracy_rate
+      - avg_response_time_ms
+      - total_elapsed_time_ms
+      - unique_questions_attempted
+      - unique_lectures_viewed
+      - active_days
+      - interactions_part_1
+      - interactions_part_2
+      - interactions_part_3
+      - interactions_part_4
+      - interactions_part_5
+      - interactions_part_6
+      - interactions_part_7
+    user_vectors:
+      - user_id
+      - accuracy_rate
+      - avg_response_time_ms
+      - total_interactions
+      - unique_questions_attempted
+      - unique_lectures_viewed
+      - active_days
+    recommendations_batch:
+      - user_id
+      - recommended_user_id
+      - similarity_score
+      - rank
+
+# ── Lineage  (Governance) ───────────────────────────────────────────────
+lineage:
+  enabled: true
+  pipeline_version: "1.0.0"
+  output_dir: "lineage"
+
+# ── Compaction  (Scalability) ────────────────────────────────────────────
+compaction:
+  target_file_size_mb: 128

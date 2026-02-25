@@ -1,0 +1,132 @@
+##############################################################################
+# Storage Microservice – Configuration
+# Cluster  : 1 NameNode + 3 DataNodes (bde2020/hadoop 3.2.1)
+# Network  : uni_net (external bridge)
+##############################################################################
+
+# ── Governance ─────────────────────────────────────────────────────────────
+# Raw vs Curated separation: raw zone is immutable (no updates).
+# Curated zone holds derived/aggregated data only.
+# All zone paths are anchored under /data/ on HDFS.
+
+hdfs:
+  namenode_host: "namenode"
+  namenode_port: 9000
+  namenode_web_port: 9870
+  default_fs: "hdfs://namenode:9000"
+  cluster_name: "uni_cluster"
+
+  # ── Reliability ──────────────────────────────────────────────────
+  replication_factor: 3                   # block-level redundancy
+  block_size_mb: 128                      # default HDFS block size
+  rack_awareness: false                   # single-rack local deployment
+
+  # ── Scalability ──────────────────────────────────────────────────
+  datanode_count: 3
+  enable_short_circuit_reads: true        # bypass TCP for local reads
+  datanode_max_transfer_threads: 4096     # parallel transfer capacity
+
+# ── Zone definitions (Governance: raw vs curated separation) ───────────────
+zones:
+  raw:
+    base_path: "/data/raw"
+    immutable: true                       # no updates/deletes allowed
+    description: "Immutable landing zone — append-only, no updates"
+    datasets:
+      kt4:
+        path: "/data/raw/kt4/partitions_by_event_date"
+        format: "parquet"
+        partition_by: ["event_date"]
+        write_mode: "append"
+        description: "KT4 student interaction events, partitioned by date"
+      lectures:
+        path: "/data/raw/content/lectures"
+        format: "parquet"
+        write_mode: "overwrite"           # full refresh (small reference data)
+        description: "Lecture metadata from EdNet-Contents"
+      questions:
+        path: "/data/raw/content/questions"
+        format: "parquet"
+        write_mode: "overwrite"
+        description: "Question metadata from EdNet-Contents"
+
+  curated:
+    base_path: "/data/curated"
+    immutable: false                      # derived data may be regenerated
+    description: "Curated zone — derived/aggregated features"
+    datasets:
+      aggregated_student_features:
+        path: "/data/curated/aggregated_student_features"
+        format: "parquet"
+        description: "Pre-computed student feature aggregations"
+      user_vectors:
+        path: "/data/curated/user_vectors"
+        format: "parquet"
+        description: "User embedding vectors for similarity computation"
+      recommendations_batch:
+        path: "/data/curated/recommendations_batch"
+        format: "parquet"
+        description: "Batch-generated recommendation results"
+
+# ── Security ───────────────────────────────────────────────────────────────
+# RBAC permissions: zone-level access control via HDFS file permissions.
+# Encryption at rest: configured at HDFS transparent encryption zone level.
+security:
+  rbac:
+    raw_zone_permissions: "755"           # owner: rwx, group/other: r-x
+    curated_zone_permissions: "750"       # owner: rwx, group: r-x, other: ---
+    owner: "hdfs"
+    group: "hadoop"
+  encryption:
+    enabled: false                        # set true when HDFS KMS is configured
+    key_name: "ednet-encryption-key"
+    zone: "/data"                         # encryption zone root path
+
+# ── Privacy ────────────────────────────────────────────────────────────────
+# No PII stored: ingestion strips PII before writing to raw zone.
+# Retention policy: automated cleanup of aged partitions.
+privacy:
+  pii_policy: "no_pii_stored"            # enforced at ingestion layer
+  retention:
+    enabled: true
+    raw_zone_retention_days: 365          # keep raw data for 1 year
+    curated_zone_retention_days: 180      # keep curated data for 6 months
+    check_schedule: "daily"               # retention check frequency
+
+# ── Reliability ────────────────────────────────────────────────────────────
+# Replication factor = 3; Automated failover; No SPOF.
+reliability:
+  replication_factor: 3
+  min_live_datanodes: 1                   # minimum for healthy cluster
+  safe_mode_threshold: 0.999             # NameNode safe-mode block ratio
+  heartbeat_interval_sec: 3               # DataNode → NameNode heartbeat
+  heartbeat_recheck_interval_ms: 300000   # NameNode re-check interval
+  block_report_interval_sec: 21600        # DataNode block report (6 hours)
+
+# ── Healthcheck thresholds ─────────────────────────────────────────────────
+healthcheck:
+  namenode_web_timeout_sec: 5
+  min_live_datanodes: 1
+  check_interval_sec: 30
+  max_retries: 3
+  zone_paths_to_verify:
+    - "/data/raw"
+    - "/data/raw/kt4"
+    - "/data/raw/content"
+    - "/data/curated"
+
+# ── Lineage & audit trail (Governance) ─────────────────────────────────────
+lineage:
+  enabled: true
+  output_dir: "lineage"
+  component_version: "1.0.0"
+
+# ── Maintainability ───────────────────────────────────────────────────────
+# Clear zone separation and structured folder hierarchy.
+# All paths managed centrally in this config file.
+# Docker image versioned; cluster managed via Docker Compose.
+maintainability:
+  config_version: "1.0.0"
+  image_tag: "bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8"
+  log_format: "json"                      # structured logging in production
+  log_level: "INFO"

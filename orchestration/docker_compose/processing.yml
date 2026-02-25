@@ -1,29 +1,37 @@
-# Batch Processing Microservice — PySpark + Spark SQL (spark:3.x)
-# Not restarted automatically — triggered by scheduler only.
+##############################################################################
+# Orchestration – Batch Processing Microservice
+# Engine  : PySpark 3.x + Spark SQL
+# Type    : Batch job (no restart policy)
+# Network : uni_net (external bridge)
+##############################################################################
+
+# ── Scheduling ─────────────────────────────────────────────────────────────
+# Not restarted automatically — triggered by the scheduler only via
+# `docker compose run --rm processing`.
 
 services:
 
   processing:
     build:
-      context: ../../microservices/processing/docker
-      dockerfile: Dockerfile
-    image: uni/processing:1.0.0        # Versioned image tag (architecture: versioned images)
+      context: ../../microservices/processing
+      dockerfile: docker/Dockerfile
+    image: uni/processing:1.0.0           # versioned image (Maintainability)
     container_name: processing
-    user: "1000:1000"                  # Non-root container (Security NFR)
-    # No restart policy — this is a batch job, not a long-running service.
-    # The scheduler triggers it via `docker compose run --rm processing`.
+    user: "1000:1000"                     # non-root container (Security)
+    # No restart policy — batch job, not a long-running service.
     environment:
       - HDFS_URL=hdfs://namenode:9000
       - MODE=${MODE:-incremental}
       - PROCESSING_WINDOW_DAYS=${PROCESSING_WINDOW_DAYS:-7}
     volumes:
-      - ../../microservices/processing:/app
+      - ../../microservices/processing:/app/microservices/processing
     depends_on:
       namenode:
         condition: service_healthy
     networks:
       - uni_net
 
+# ── Network (external) ────────────────────────────────────────────────────
 networks:
   uni_net:
     external: true

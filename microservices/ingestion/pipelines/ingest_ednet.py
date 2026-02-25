@@ -17,7 +17,7 @@ Usage
 -----
     spark-submit \\
         --master spark://master:7077 \\
-        microservices/ingestion/pipelines/file_intake/ingest_ednet.py \\
+        microservices/ingestion/pipelines/ingest_ednet.py \\
         --config microservices/ingestion/config/ingestion_config.yaml \\
         [--mode initial | daily]
 """
@@ -31,7 +31,7 @@ from pathlib import Path
 
 import yaml
 
-_project_root = str(Path(__file__).resolve().parents[4])
+_project_root = str(Path(__file__).resolve().parents[3])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 

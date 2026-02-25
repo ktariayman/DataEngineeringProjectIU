@@ -1,15 +1,25 @@
-# HDFS Cluster — 1 NameNode + 3 DataNodes
-# Replication factor = 3 (block-level, no SPOF)
+##############################################################################
+# Orchestration – HDFS Storage Cluster
+# Services : 1 NameNode + 3 DataNodes
+# Image    : bde2020/hadoop 3.2.1 (Java 8)
+# Network  : uni_net (external bridge)
+##############################################################################
+
+# ── Reliability ────────────────────────────────────────────────────────────
+# Replication factor = 3 (block-level redundancy, no single point of failure).
+# NameNode healthcheck gates DataNode startup via depends_on → service_healthy.
+# Restart policy: unless-stopped (always-on infrastructure service).
 
 services:
 
+  # ── NameNode ─────────────────────────────────────────────────────────────
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: namenode
     restart: unless-stopped
     ports:
-      - "9870:9870"   # HDFS Web UI
-      - "9000:9000"   # HDFS RPC
+      - "9870:9870"                       # HDFS Web UI
+      - "9000:9000"                       # HDFS RPC
     environment:
       - CLUSTER_NAME=uni_cluster
       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
@@ -22,10 +32,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 60s                   # first boot may take 60–120 s
     networks:
       - uni_net
 
+  # ── DataNode 1 ───────────────────────────────────────────────────────────
   datanode1:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: datanode1
@@ -41,6 +52,7 @@ services:
     networks:
       - uni_net
 
+  # ── DataNode 2 ───────────────────────────────────────────────────────────
   datanode2:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: datanode2
@@ -56,6 +68,7 @@ services:
     networks:
       - uni_net
 
+  # ── DataNode 3 ───────────────────────────────────────────────────────────
   datanode3:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: datanode3
@@ -71,12 +84,14 @@ services:
     networks:
       - uni_net
 
+# ── Persistent Volumes ────────────────────────────────────────────────────
 volumes:
   namenode_data:
   datanode1_data:
   datanode2_data:
   datanode3_data:
 
+# ── Network (external) ────────────────────────────────────────────────────
 networks:
   uni_net:
     external: true

@@ -1,0 +1,34 @@
+##############################################################################
+# Recommendation Loader – Configuration
+#
+# Reads curated Parquet from HDFS → writes to PostgreSQL serving store.
+##############################################################################
+
+# ── Spark runtime ─────────────────────────────────────────────────────────
+spark:
+  app_name: ednet-recommendation-loader
+  config:
+    spark.sql.adaptive.enabled: "true"
+    spark.executor.memory: "1g"
+    spark.driver.memory: "1g"
+
+# ── HDFS sources (curated zone) ──────────────────────────────────────────
+sources:
+  recommendations_batch:
+    path: "hdfs://namenode:9000/data/curated/recommendations_batch"
+    format: parquet
+  aggregated_student_features:
+    path: "hdfs://namenode:9000/data/curated/aggregated_student_features"
+    format: parquet
+
+# ── PostgreSQL target ────────────────────────────────────────────────────
+postgres:
+  host: "postgres"
+  port: 5432
+  database: "recommendations"
+  tables:
+    recommendations: "recommendations"
+    student_features: "student_features"
+  jdbc_url: "jdbc:postgresql://postgres:5432/recommendations"
+  write_mode: overwrite            # full refresh on each load
+  batch_size: 5000

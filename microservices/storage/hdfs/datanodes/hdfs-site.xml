@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  DataNode HDFS Site Configuration – Storage Microservice
+  Inherits cluster-wide settings from NameNode config.
+-->
+<configuration>
+    <!-- Reliability: replication factor (must match NameNode) -->
+    <property>
+        <name>dfs.replication</name>
+        <value>3</value>
+    </property>
+
+    <!-- DataNode data directory -->
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///hadoop/dfs/data</value>
+    </property>
+
+    <!-- Scalability: max transfer threads -->
+    <property>
+        <name>dfs.datanode.max.transfer.threads</name>
+        <value>4096</value>
+    </property>
+
+    <!-- Reliability: heartbeat interval -->
+    <property>
+        <name>dfs.heartbeat.interval</name>
+        <value>3</value>
+    </property>
+
+    <!-- Reliability: block report interval (6 hours) -->
+    <property>
+        <name>dfs.blockreport.intervalMsec</name>
+        <value>21600000</value>
+    </property>
+
+    <!-- Disable hostname check for local Docker networking -->
+    <property>
+        <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+        <value>false</value>
+    </property>
+</configuration>
