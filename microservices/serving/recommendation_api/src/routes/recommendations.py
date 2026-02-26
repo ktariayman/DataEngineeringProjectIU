@@ -5,7 +5,7 @@ Recommendation API – route definitions.
 from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..schemas import (
     RecommendationsResponse,
@@ -49,7 +49,7 @@ def fetch_recommendations(
     if current_user != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Token issued for '{current_user}' cannot access data for '{user_id}'.",
+            detail="Access denied.",
         )
     results = get_recommendations(user_id, top_k=top_k)
     if not results:
@@ -74,7 +74,7 @@ def fetch_student_features(
     if current_user != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Token issued for '{current_user}' cannot access data for '{user_id}'.",
+            detail="Access denied.",
         )
     features = get_student_features(user_id)
     if features is None:

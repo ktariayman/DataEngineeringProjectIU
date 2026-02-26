@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"])
 
 _ALGORITHM = "HS256"
-_TOKEN_EXPIRE_HOURS = 24
+_TOKEN_EXPIRE_SECONDS = 86400
 
 
 # ── Request / Response models ────────────────────────────────────────────────
@@ -85,8 +85,8 @@ async def issue_token(body: TokenRequest) -> TokenResponse:
         )
 
     now = datetime.now(timezone.utc)
-    expire = now + timedelta(hours=_TOKEN_EXPIRE_HOURS)
-    expire_seconds = int(_TOKEN_EXPIRE_HOURS * 3600)
+    expire = now + timedelta(seconds=_TOKEN_EXPIRE_SECONDS)
+    expire_seconds = _TOKEN_EXPIRE_SECONDS
 
     jwt_secret = os.environ.get("JWT_SECRET", "")
     if not jwt_secret:
