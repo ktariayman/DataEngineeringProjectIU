@@ -78,7 +78,7 @@ def main() -> None:
     pg_cfg = cfg["postgres"]
     jdbc_url = pg_cfg["jdbc_url"]
     pg_user = os.getenv("POSTGRES_USER", "postgres")
-    pg_password = os.getenv("POSTGRES_PASSWORD", "changeme")
+    pg_password = os.getenv("POSTGRES_PASSWORD", "")
     write_mode = pg_cfg.get("write_mode", "overwrite")
     batch_size = pg_cfg.get("batch_size", 5000)
 
