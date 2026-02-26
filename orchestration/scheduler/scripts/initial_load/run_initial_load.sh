@@ -39,7 +39,7 @@ log "═════════════════════════
 
 log "Step 1/3: Running ingestion (MODE=initial) …"
 
-docker compose run --rm \
+sudo docker compose run --rm \
   -e MODE=initial \
   ingestion \
   || fail "Step 1 failed → ingestion exited with a non-zero status."
@@ -50,7 +50,7 @@ log "Step 1/3: Ingestion completed successfully."
 
 log "Step 2/3: Running processing (MODE=initial_load) …"
 
-docker compose run --rm \
+sudo docker compose run --rm \
   -e MODE=initial_load \
   processing \
   || fail "Step 2 failed → processing exited with a non-zero status."
@@ -61,7 +61,7 @@ log "Step 2/3: Processing completed successfully."
 
 log "Step 3/3: Running recommendation_loader (MODE=initial_load) …"
 
-docker compose run --rm \
+sudo docker compose run --rm \
   -e MODE=initial_load \
   recommendation_loader \
   || fail "Step 3 failed → recommendation_loader exited with a non-zero status."

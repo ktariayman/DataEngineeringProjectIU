@@ -59,7 +59,7 @@ wait_for_healthy() {
   log "Waiting for '${service}' to become healthy (max ${max_wait}s) …"
   while [ "$elapsed" -lt "$max_wait" ]; do
     local status
-    status=$(docker inspect --format='{{.State.Health.Status}}' "$service" 2>/dev/null || echo "missing")
+    status=$(sudo docker inspect --format='{{.State.Health.Status}}' "$service" 2>/dev/null || echo "missing")
     if [ "$status" = "healthy" ]; then
       success "'${service}' is healthy."
       return 0
@@ -91,13 +91,13 @@ fi
 success ".env file found."
 
 # Docker
-if ! docker info > /dev/null 2>&1; then
+if ! sudo docker info > /dev/null 2>&1; then
   fail "Docker is not running. Start Docker Desktop and retry."
 fi
 success "Docker is running."
 
 # Docker Compose version (need v2.20+ for include:)
-COMPOSE_VERSION=$(docker compose version --short 2>/dev/null || echo "0.0.0")
+COMPOSE_VERSION=$(sudo docker compose version --short 2>/dev/null || echo "0.0.0")
 COMPOSE_MAJOR=$(echo "$COMPOSE_VERSION" | cut -d. -f1)
 COMPOSE_MINOR=$(echo "$COMPOSE_VERSION" | cut -d. -f2)
 if [ "$COMPOSE_MAJOR" -lt 2 ] || { [ "$COMPOSE_MAJOR" -eq 2 ] && [ "$COMPOSE_MINOR" -lt 20 ]; }; then
@@ -133,11 +133,11 @@ fi
 
 header "Step 2 / 9 — Docker Network"
 
-if docker network inspect uni_net > /dev/null 2>&1; then
+if sudo docker network inspect uni_net > /dev/null 2>&1; then
   success "Network 'uni_net' already exists — skipping creation."
 else
   log "Creating Docker network 'uni_net' …"
-  docker network create uni_net
+  sudo docker network create uni_net
   success "Network 'uni_net' created."
 fi
 
@@ -158,8 +158,8 @@ KNOWN_CONTAINERS=(
 
 log "Force-removing any leftover containers from a previous run …"
 for c in "${KNOWN_CONTAINERS[@]}"; do
-  if docker inspect "$c" > /dev/null 2>&1; then
-    docker rm -f "$c" > /dev/null 2>&1 && log "  Removed: $c" || warn "  Could not remove: $c"
+  if sudo docker inspect "$c" > /dev/null 2>&1; then
+    sudo docker rm -f "$c" > /dev/null 2>&1 && log "  Removed: $c" || warn "  Could not remove: $c"
   fi
 done
 success "Cleanup done — starting fresh."
@@ -169,7 +169,7 @@ success "Cleanup done — starting fresh."
 header "Step 3 / 9 — Building Docker Images"
 
 log "Building all microservice images …"
-docker compose build \
+sudo docker compose build \
   ingestion \
   processing \
   recommendation_loader \
@@ -181,7 +181,7 @@ success "All images built."
 header "Step 4 / 9 — Starting Storage Layer (HDFS)"
 
 log "Starting NameNode and DataNodes …"
-docker compose up -d namenode datanode1 datanode2 datanode3
+sudo docker compose up -d namenode datanode1 datanode2 datanode3
 
 wait_for_healthy namenode 180
 
@@ -192,7 +192,7 @@ success "HDFS cluster is up. Web UI: http://localhost:9870"
 header "Step 5 / 9 — Starting PostgreSQL (Serving Store)"
 
 log "Starting PostgreSQL …"
-docker compose up -d postgres
+sudo docker compose up -d postgres
 
 wait_for_healthy postgres 60
 
@@ -203,7 +203,7 @@ success "PostgreSQL is up on port 5432."
 header "Step 5b / 9 — HDFS Directory Provisioning"
 
 log "Creating HDFS base directories and setting permissions …"
-docker exec namenode bash -c "hdfs dfsadmin -safemode wait && hdfs dfs -mkdir -p /data/raw/kt4 && hdfs dfs -mkdir -p /data/raw/content && hdfs dfs -mkdir -p /data/curated && hdfs dfs -chmod -R 777 /data" \
+sudo docker exec namenode bash -c "hdfs dfsadmin -safemode wait && hdfs dfs -mkdir -p /data/raw/kt4 && hdfs dfs -mkdir -p /data/raw/content && hdfs dfs -mkdir -p /data/curated && hdfs dfs -chmod -R 777 /data" \
   || fail "HDFS directory provisioning failed."
 
 success "HDFS /data hierarchy created with open permissions."
@@ -213,15 +213,15 @@ success "HDFS /data hierarchy created with open permissions."
 header "Step 6 / 9 — Ingestion (Initial Load → HDFS Raw Zone)"
 
 log "Running ingestion in MODE=initial …"
-docker compose run --rm \
+sudo docker compose run --rm \
   -e MODE=initial \
   ingestion \
-  || fail "Ingestion failed. Check logs: docker compose logs ingestion"
+  || fail "Ingestion failed. Check logs: sudo docker compose logs ingestion"
 
 success "Ingestion complete. Data written to HDFS /data/raw/"
 
 log "Verifying HDFS kt4 path was written …"
-docker exec namenode bash -c "hdfs dfs -ls /data/raw/kt4/partitions_by_event_date" \
+sudo docker exec namenode bash -c "hdfs dfs -ls /data/raw/kt4/partitions_by_event_date" \
   || fail "HDFS kt4 path not found after ingestion. Check ingestion logs for validation errors."
 success "HDFS kt4 data confirmed."
 
@@ -230,10 +230,10 @@ success "HDFS kt4 data confirmed."
 header "Step 7 / 9 — Processing (Feature Engineering + Similarity → HDFS Curated)"
 
 log "Running processing in MODE=initial …"
-docker compose run --rm \
+sudo docker compose run --rm \
   -e MODE=initial \
   processing \
-  || fail "Processing failed. Check logs: docker compose logs processing"
+  || fail "Processing failed. Check logs: sudo docker compose logs processing"
 
 success "Processing complete. Vectors + recommendations written to HDFS /data/curated/"
 
@@ -242,10 +242,10 @@ success "Processing complete. Vectors + recommendations written to HDFS /data/cu
 header "Step 8 / 9 — Recommendation Loader (HDFS Curated → PostgreSQL)"
 
 log "Running recommendation_loader in MODE=initial …"
-docker compose run --rm \
+sudo docker compose run --rm \
   -e MODE=initial \
   recommendation_loader \
-  || fail "Recommendation loader failed. Check logs: docker compose logs recommendation_loader"
+  || fail "Recommendation loader failed. Check logs: sudo docker compose logs recommendation_loader"
 
 success "Recommendations loaded into PostgreSQL."
 
@@ -254,7 +254,7 @@ success "Recommendations loaded into PostgreSQL."
 header "Step 9 / 9 — Starting Recommendation API"
 
 log "Starting recommendation_api …"
-docker compose up -d recommendation_api
+sudo docker compose up -d recommendation_api
 
 wait_for_healthy recommendation_api 60
 
@@ -297,7 +297,7 @@ log "To run the daily incremental pipeline:"
 echo "  bash orchestration/scheduler/scripts/daily_pipeline/run_daily_pipeline.sh"
 echo ""
 log "To stop everything:"
-echo "  docker compose down"
+echo "  sudo docker compose down"
 echo ""
 
 exit 0

@@ -78,7 +78,7 @@ log "═════════════════════════
 log "Step 1/3: Running ingestion (MODE=daily, EVENT_DATE=${EVENT_DATE}) …"
 
 retry_step "Step 1/3 [ingestion]" \
-  docker compose run --rm \
+  sudo docker compose run --rm \
     -e MODE=daily \
     -e EVENT_DATE="${EVENT_DATE}" \
     ingestion
@@ -92,7 +92,7 @@ PROCESSING_WINDOW_DAYS="${PROCESSING_WINDOW_DAYS:-7}"
 log "Step 2/3: Running processing (MODE=incremental, WINDOW=${PROCESSING_WINDOW_DAYS}d) …"
 
 retry_step "Step 2/3 [processing]" \
-  docker compose run --rm \
+  sudo docker compose run --rm \
     -e MODE=incremental \
     -e PROCESSING_WINDOW_DAYS="${PROCESSING_WINDOW_DAYS}" \
     processing
@@ -104,7 +104,7 @@ log "Step 2/3: Processing completed successfully."
 log "Step 3/3: Running recommendation_loader …"
 
 retry_step "Step 3/3 [recommendation_loader]" \
-  docker compose run --rm \
+  sudo docker compose run --rm \
     -e MODE=incremental \
     recommendation_loader
 
