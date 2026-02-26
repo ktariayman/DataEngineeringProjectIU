@@ -88,7 +88,12 @@ async def issue_token(body: TokenRequest) -> TokenResponse:
     expire = now + timedelta(hours=_TOKEN_EXPIRE_HOURS)
     expire_seconds = int(_TOKEN_EXPIRE_HOURS * 3600)
 
-    jwt_secret = os.environ.get("JWT_SECRET", "changeme")
+    jwt_secret = os.environ.get("JWT_SECRET", "")
+    if not jwt_secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server misconfiguration — JWT_SECRET not set.",
+        )
     token = jwt.encode(
         {"sub": body.user_id, "iat": now, "exp": expire},
         key=jwt_secret,

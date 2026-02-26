@@ -5,7 +5,7 @@ Recommendation API – route definitions.
 from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..schemas import (
     RecommendationsResponse,
@@ -13,6 +13,7 @@ from ..schemas import (
     StudentFeaturesResponse,
     HealthResponse,
 )
+from ..services.auth import get_current_user
 from ..services.recommendation_service import get_recommendations, get_student_features
 from ..services.database import get_connection
 
@@ -23,7 +24,7 @@ router = APIRouter()
 
 @router.get("/health", response_model=HealthResponse, tags=["Health"])
 def health_check():
-    """Liveness / readiness probe."""
+    """Liveness / readiness probe. No auth required (used by Docker healthcheck)."""
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -42,8 +43,14 @@ def health_check():
 def fetch_recommendations(
     user_id: str,
     top_k: int = Query(default=10, ge=1, le=50, description="Number of recommendations"),
+    current_user: str = Depends(get_current_user),
 ):
-    """Return top-K similar users for a given student."""
+    """Return top-K similar students for a given user. **Requires Bearer JWT issued for that user.**"""
+    if current_user != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Token issued for '{current_user}' cannot access data for '{user_id}'.",
+        )
     results = get_recommendations(user_id, top_k=top_k)
     if not results:
         raise HTTPException(status_code=404, detail=f"No recommendations found for user '{user_id}'.")
@@ -59,8 +66,16 @@ def fetch_recommendations(
     response_model=StudentFeaturesResponse,
     tags=["Students"],
 )
-def fetch_student_features(user_id: str):
-    """Return aggregated features for a given student."""
+def fetch_student_features(
+    user_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Return aggregated learning features for a given student. **Requires Bearer JWT issued for that user.**"""
+    if current_user != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Token issued for '{current_user}' cannot access data for '{user_id}'.",
+        )
     features = get_student_features(user_id)
     if features is None:
         raise HTTPException(status_code=404, detail=f"No features found for user '{user_id}'.")
