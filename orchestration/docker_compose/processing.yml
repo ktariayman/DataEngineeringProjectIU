@@ -15,6 +15,7 @@ services:
     build:
       context: ../../microservices/processing
       dockerfile: docker/Dockerfile
+      network: host                        # use host network during RUN steps (TLS bypass)
     image: uni/processing:1.0.0           # versioned image (Maintainability)
     container_name: processing
     user: "1000:1000"                     # non-root container (Security)

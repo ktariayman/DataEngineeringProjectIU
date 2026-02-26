@@ -14,7 +14,7 @@ LABEL version="1.0.0"
 
 USER root
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --network=host apt-get update && apt-get install -y --no-install-recommends \
         python3-pip curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,12 +24,12 @@ RUN id -u sparkuser 2>/dev/null || useradd -m -u 1000 sparkuser
 WORKDIR /app
 
 # ── PostgreSQL JDBC driver ────────────────────────────────────────────────
-RUN curl -fSL -o /opt/spark/jars/postgresql-42.7.1.jar \
+RUN --network=host curl -fSL -o /opt/spark/jars/postgresql-42.7.1.jar \
     https://jdbc.postgresql.org/download/postgresql-42.7.1.jar
 
 # ── Python dependencies ──────────────────────────────────────────────────
 COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+RUN --network=host pip3 install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
 # ── Application code ─────────────────────────────────────────────────────
 COPY config/    /app/microservices/serving/recommendation_loader/config/

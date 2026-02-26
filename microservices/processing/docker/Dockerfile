@@ -16,7 +16,7 @@ LABEL version="1.0.0"
 # ── Switch to root to install packages ───────────────────────────────────
 USER root
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --network=host apt-get update && apt-get install -y --no-install-recommends \
         python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
@@ -27,7 +27,7 @@ WORKDIR /app
 
 # ── Install Python dependencies (cached layer) ──────────────────────────
 COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+RUN --network=host pip3 install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
 # ── Copy application code ────────────────────────────────────────────────
 COPY config/      /app/microservices/processing/config/

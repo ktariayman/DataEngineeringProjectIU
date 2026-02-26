@@ -40,6 +40,7 @@ services:
     build:
       context: ../../microservices/serving/recommendation_loader
       dockerfile: docker/Dockerfile
+      network: host                         # use host network during RUN steps (TLS bypass)
     image: uni/recommendation-loader:1.0.0  # versioned image (Maintainability)
     container_name: recommendation_loader
     user: "1000:1000"                       # non-root container (Security)
@@ -64,6 +65,7 @@ services:
     build:
       context: ../../microservices/serving/recommendation_api
       dockerfile: docker/Dockerfile
+      network: host                         # use host network during RUN steps (TLS bypass)
     image: uni/recommendation-api:1.0.0     # versioned image (Maintainability)
     container_name: recommendation_api
     restart: unless-stopped                 # always-on service

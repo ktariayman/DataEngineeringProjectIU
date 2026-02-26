@@ -12,7 +12,7 @@ LABEL maintainer="ednet-team"
 LABEL service="recommendation-api"
 LABEL version="1.0.0"
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --network=host apt-get update && apt-get install -y --no-install-recommends \
         curl libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,7 +23,7 @@ WORKDIR /app
 
 # ── Python dependencies ──────────────────────────────────────────────────
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+RUN --network=host pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
 # ── Application code ─────────────────────────────────────────────────────
 COPY src/ /app/microservices/serving/recommendation_api/src/
