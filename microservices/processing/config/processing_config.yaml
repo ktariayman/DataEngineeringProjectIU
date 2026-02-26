@@ -9,20 +9,18 @@
 # ── Spark runtime ─────────────────────────────────────────────────────────
 spark:
   app_name: ednet-processing
-  master: spark://master:7077          # override with local[*] for dev
+  master: local[*]                      # no Spark cluster — run in-process
   config:
-    # Adaptive Query Execution  (Scalability)
+    # Adaptive Query Execution
     spark.sql.adaptive.enabled: "true"
     spark.sql.adaptive.coalescePartitions.enabled: "true"
-    # Dynamic allocation  (Scalability)
-    spark.dynamicAllocation.enabled: "true"
-    spark.dynamicAllocation.minExecutors: "1"
-    spark.dynamicAllocation.maxExecutors: "8"
+    # Dynamic allocation requires a cluster manager — disabled for local mode
+    spark.dynamicAllocation.enabled: "false"
     # Memory
     spark.executor.memory: "2g"
     spark.driver.memory: "2g"
-    # Shuffle partitions
-    spark.sql.shuffle.partitions: "200"
+    # Shuffle partitions (keep small for local single-node execution)
+    spark.sql.shuffle.partitions: "8"
     # Serialiser
     spark.serializer: "org.apache.spark.serializer.KryoSerializer"
 

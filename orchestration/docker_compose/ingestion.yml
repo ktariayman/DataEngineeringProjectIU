@@ -25,7 +25,7 @@ services:
       - EVENT_DATE=${EVENT_DATE:-}        # YYYY-MM-DD UTC, set by daily pipeline script
     volumes:
       - ../../microservices/ingestion:/app/microservices/ingestion
-      - ../../data/EdNet-KT4:/app/EdNet-KT4
+      - ../../EdNet-KT4:/app/EdNet-KT4
       - ../../data/EdNet-Contents:/app/EdNet-Contents
     depends_on:
       namenode:

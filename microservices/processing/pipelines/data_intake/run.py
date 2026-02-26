@@ -81,7 +81,9 @@ def read_raw_sources(
         dataframes["kt4"] = kt4_df
         logger.info("[data_intake] Read 'kt4' from %s", kt4_path)
     except Exception as exc:
-        logger.error("[data_intake] FAILED to read 'kt4': %s", exc)
+        # KT4 is mandatory — without it the entire pipeline cannot run.
+        logger.error("[data_intake] FAILED to read 'kt4' from %s: %s", kt4_path, exc)
+        raise RuntimeError(f"[data_intake] Cannot read KT4 source from '{kt4_path}': {exc}") from exc
 
     # ── Lectures metadata ────────────────────────────────────────────
     try:

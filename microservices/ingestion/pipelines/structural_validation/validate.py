@@ -61,6 +61,10 @@ def validate_sources(
     dict[str, DataFrame]
         Validated + normalised DataFrames (same keys).
     """
+    # kt4 is the core source — all downstream steps require it.
+    # Validation failure for kt4 is immediately fatal.
+    MANDATORY_SOURCES = {"kt4"}
+
     validator = build_validator(config_path)
     validated: dict[str, DataFrame] = {}
 
@@ -68,10 +72,23 @@ def validate_sources(
         try:
             validated[name] = validator.validate(df, source_name=name)
         except Exception as exc:
-            logger.error(
-                "[structural_validation] Source '%s' FAILED validation: %s",
-                name, exc,
-            )
+            if name in MANDATORY_SOURCES:
+                # Re-raise immediately — pipeline cannot continue without this
+                logger.error(
+                    "[structural_validation] Mandatory source '%s' FAILED: %s",
+                    name, exc,
+                )
+                raise RuntimeError(
+                    f"[structural_validation] Mandatory source '{name}' failed "
+                    f"validation and cannot be skipped: {exc}"
+                ) from exc
+            else:
+                # Non-mandatory: log warning but continue
+                logger.warning(
+                    "[structural_validation] Source '%s' FAILED validation "
+                    "(non-mandatory, skipping): %s",
+                    name, exc,
+                )
 
     if not validated:
         raise RuntimeError("All sources failed structural validation. Aborting pipeline.")

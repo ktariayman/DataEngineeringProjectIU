@@ -73,8 +73,9 @@ class DataQualityValidator:
         self._check_required_columns(df, dataset_name)
         self._check_row_count(df, dataset_name)
         self._check_null_ratio(df, dataset_name)
-        if primary_key in df.columns:
-            self._check_duplicates(df, dataset_name, primary_key)
+        pk_cols = [primary_key] if isinstance(primary_key, str) else list(primary_key)
+        if all(c in df.columns for c in pk_cols):
+            self._check_duplicates(df, dataset_name, pk_cols)
 
         logger.info("[data_quality] '%s' passed all quality checks.", dataset_name)
         return df
@@ -132,18 +133,18 @@ class DataQualityValidator:
     def _check_duplicates(
         df: DataFrame,
         dataset_name: str,
-        primary_key: str,
+        primary_key: list,
     ) -> None:
-        """Ensure no duplicate values in the primary key column."""
+        """Ensure no duplicate rows across the primary key column(s)."""
         total = df.count()
-        distinct = df.select(primary_key).distinct().count()
+        distinct = df.select(*primary_key).distinct().count()
         duplicates = total - distinct
         if duplicates > 0:
             raise DataQualityError(
                 f"[{dataset_name}] Found {duplicates} duplicate(s) "
-                f"in primary key '{primary_key}'"
+                f"in primary key {primary_key}"
             )
         logger.info(
-            "[data_quality] [%s] No duplicates in '%s'.",
+            "[data_quality] [%s] No duplicates in %s.",
             dataset_name, primary_key,
         )

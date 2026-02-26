@@ -1,5 +1,10 @@
 # Processing microservice – Python dependencies
+# ──────────────────────────────────────────────────────────────────────────
+# Base image: apache/spark:3.5.1-python3  →  Python 3.8
+# pandas 2.2+ requires Python 3.9+, so we pin to the last 3.8-compatible
+# release. numpy 2.x also requires Python 3.9+, pin to 1.x.
+# ──────────────────────────────────────────────────────────────────────────
 pyspark>=3.4,<4.0
 pyyaml>=6.0
-numpy>=1.24
-pandas>=2.2.0
+numpy>=1.24,<2.0
+pandas>=2.0,<2.1

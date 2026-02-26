@@ -118,7 +118,7 @@ class EdNetCSVReader:
         self,
         path: str,
         glob_pattern: str = "*.csv",
-        delimiter: str = "\t",
+        delimiter: str = ",",
     ) -> DataFrame:
         """Convenience method to read KT4 interaction logs.
 

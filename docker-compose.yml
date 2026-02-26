@@ -1,17 +1,35 @@
-# Root Docker Compose — wires all service groups together.
-# Requires Docker Compose v2.20+
+##############################################################################
+# Root Docker Compose — Orchestration Controller
+# Wires all per-service compose files together via `include:`.
+#
+# Requires: Docker Compose v2.20+
+#   Check your version: docker compose version
+#   Upgrade: https://docs.docker.com/compose/install/
 #
 # Prerequisites:
-#   1. Create the shared network once:
-#      docker network create uni_net
+#   1. Create the shared network (one-time):
+#        docker network create uni_net
 #
-#   2. Copy .env.example → .env and fill in secrets before running.
+#   2. Copy .env.example → .env and fill in secrets.
 #
-# To start all long-running services:
-#   docker compose up -d
+# Individual service compose files (for reference or standalone use):
+#   orchestration/docker_compose/storage.yml     ← HDFS cluster
+#   orchestration/docker_compose/ingestion.yml   ← Ingestion batch job
+#   orchestration/docker_compose/processing.yml  ← Processing batch job
+#   orchestration/docker_compose/serving.yml     ← PostgreSQL + Loader + API
 #
-# The ingestion, processing, and recommendation_loader services are NOT
-# started here — they are triggered by the scheduler scripts only.
+# Usage:
+#   # Build all images:
+#   docker compose build
+#
+#   # Start long-running services:
+#   docker compose up -d namenode datanode1 datanode2 datanode3 postgres recommendation_api
+#
+#   # Run a specific layer only (e.g. storage):
+#   docker compose -f orchestration/docker_compose/storage.yml up -d
+#
+# See docs/SETUP.md for the full step-by-step guide.
+##############################################################################
 
 include:
   - orchestration/docker_compose/storage.yml

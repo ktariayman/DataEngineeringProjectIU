@@ -50,7 +50,7 @@ sources:
     path: "EdNet-KT4/"              # directory of per-user CSVs
     glob_pattern: "*.csv"
     has_header: true
-    delimiter: "\t"                       # EdNet KT files are TSV
+    delimiter: ","                        # EdNet KT4 files are CSV (comma-separated)
     encoding: "utf-8"
 
   lectures:

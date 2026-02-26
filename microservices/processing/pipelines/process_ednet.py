@@ -79,8 +79,12 @@ def main(config_path: str, mode: str = "initial") -> None:
         ``"initial"`` for full reprocessing (overwrite) or
         ``"incremental"`` for windowed reprocessing.
     """
-    write_mode = "overwrite" if mode == "initial" else "overwrite"
-    logger.info("=== EdNet Processing Pipeline [%s mode] ===", mode)
+    # Both modes use overwrite: Spark writes to partitioned paths and overwriting
+    # is idempotent (re-running the same day produces the same output).
+    # The distinction between modes controls the READ window (all history vs last N days),
+    # not the write strategy — curated outputs are always replaced per run.
+    write_mode = "overwrite"
+    logger.info("=== EdNet Processing Pipeline [%s mode, write=%s] ===", mode, write_mode)
 
     cfg = load_config(config_path)
 
@@ -116,6 +120,13 @@ def main(config_path: str, mode: str = "initial") -> None:
         window_days = cfg.get("processing_window", {}).get("window_days", 7)
 
     dataframes = read_raw_sources(cfg, window_days=window_days)
+
+    # Guard: kt4 is mandatory for all downstream steps
+    if "kt4" not in dataframes:
+        raise RuntimeError(
+            "[pipeline] 'kt4' source missing from dataframes after data intake. "
+            f"Check HDFS path: {cfg['sources']['kt4']['path']}"
+        )
 
     if lineage:
         for name, df in dataframes.items():
@@ -188,7 +199,7 @@ def main(config_path: str, mode: str = "initial") -> None:
     pk_map = {
         "aggregated_student_features": "user_id",
         "user_vectors": "user_id",
-        "recommendations_batch": "user_id",
+        "recommendations_batch": ["user_id", "recommended_user_id"],  # composite PK
     }
     for name, df in outputs.items():
         dq_validator.validate(df, dataset_name=name, primary_key=pk_map[name])

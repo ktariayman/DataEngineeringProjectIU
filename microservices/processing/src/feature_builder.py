@@ -41,7 +41,7 @@ def enrich_interactions(
     ----------
     kt4_df : DataFrame
         Raw KT4 interactions (user_id, timestamp, action_type, item_id,
-        source, user_answer, platform, elapsed_time, event_date).
+        source, user_answer, platform, cursor_time, event_date).
     questions_df : DataFrame
         Questions metadata (question_id, correct_answer, part, …).
     correctness_join : bool
@@ -90,15 +90,15 @@ def enrich_interactions(
         ).otherwise(lit(None)).cast("int"),
     )
 
-    # ── 3. Cap response time ─────────────────────────────────────────
+    # ── 3. Cap response time (cursor_time = response time in ms) ────────
     df = df.withColumn(
         "response_time_ms",
         when(
-            col("elapsed_time").isNotNull(),
+            col("cursor_time").isNotNull(),
             when(
-                col("elapsed_time") > response_time_cap_ms,
+                col("cursor_time") > response_time_cap_ms,
                 lit(response_time_cap_ms),
-            ).otherwise(col("elapsed_time")),
+            ).otherwise(col("cursor_time")),
         ).otherwise(lit(None)).cast("long"),
     )
 
@@ -119,14 +119,14 @@ def enrich_interactions(
 
 
 def cap_response_time(df: DataFrame, cap_ms: int = 300_000) -> DataFrame:
-    """Cap ``elapsed_time`` values to ``cap_ms`` (standalone utility).
+    """Cap ``cursor_time`` values to ``cap_ms`` (standalone utility).
 
     Useful when called outside the full enrichment pipeline.
     """
     return df.withColumn(
-        "elapsed_time",
+        "cursor_time",
         when(
-            col("elapsed_time") > cap_ms,
+            col("cursor_time") > cap_ms,
             lit(cap_ms),
-        ).otherwise(col("elapsed_time")),
+        ).otherwise(col("cursor_time")),
     )
