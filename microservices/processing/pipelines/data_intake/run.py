@@ -1,5 +1,5 @@
 """
-Pipeline step 1 – Data Intake: read Parquet from the HDFS raw zone.
+Pipeline step 1 - Data Intake: read Parquet from the HDFS raw zone.
 
 Reads the ingestion-produced Parquet datasets (KT4 interactions, lectures
 metadata, questions metadata) into Spark DataFrames for downstream

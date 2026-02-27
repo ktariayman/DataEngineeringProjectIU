@@ -92,7 +92,7 @@ success ".env file found."
 
 # Docker
 if ! sudo docker info > /dev/null 2>&1; then
-  fail "Docker is not running. Start Docker Desktop and retry."
+  fail "Docker is not running."
 fi
 success "Docker is running."
 
@@ -161,7 +161,7 @@ for c in "${KNOWN_CONTAINERS[@]}"; do
   if sudo docker inspect "$c" > /dev/null 2>&1; then
     sudo docker rm -f "$c" > /dev/null 2>&1 && log "  Removed: $c" || warn "  Could not remove: $c"
   fi
-done
+done 
 success "Cleanup done — starting fresh."
 
 # ── Step 3 — Build All Images ─────────────────────────────────────────────
@@ -174,7 +174,7 @@ sudo docker compose build \
   processing \
   recommendation_loader \
   recommendation_api
-success "All images built."
+success "All images built." 
 
 # ── Step 4 — Start Storage Layer (HDFS) ──────────────────────────────────
 

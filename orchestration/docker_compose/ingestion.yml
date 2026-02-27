@@ -15,7 +15,7 @@ services:
     build:
       context: ../../microservices/ingestion
       dockerfile: docker/Dockerfile
-      network: host                      
+      network: host  # Use host network for faster downloads during build
     image: uni/ingestion:1.0.0            # versioned image (Maintainability)
     container_name: ingestion
     user: "1000:1000"                     # non-root container (Security)
@@ -26,7 +26,7 @@ services:
       - EVENT_DATE=${EVENT_DATE:-}        # YYYY-MM-DD UTC, set by daily pipeline script
     volumes:
       - ../../microservices/ingestion:/app/microservices/ingestion
-      - ../../EdNet-KT4:/app/EdNet-KT4
+      - ../../data/EdNet-KT4:/app/EdNet-KT4
       - ../../data/EdNet-Contents:/app/EdNet-Contents
     depends_on:
       namenode:

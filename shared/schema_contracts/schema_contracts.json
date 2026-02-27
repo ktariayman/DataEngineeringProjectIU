@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EdNet Pipeline Schema Contracts",
+  "description": "Shared data-format contracts enforced across microservices. Any schema change must be reflected here before code is modified.",
+  "version": "1.0.0",
+  "contracts": {
+    "raw_zone": {
+      "kt4": {
+        "format": "parquet",
+        "compression": "snappy",
+        "partition_columns": ["event_date"],
+        "required_columns": {
+          "timestamp": "long",
+          "solving_id": "long",
+          "question_id": "string",
+          "user_answer": "string",
+          "elapsed_time": "long",
+          "user_id": "string",
+          "event_date": "date"
+        }
+      },
+      "questions": {
+        "format": "parquet",
+        "compression": "snappy",
+        "required_columns": {
+          "question_id": "string",
+          "bundle_id": "string",
+          "correct_answer": "string",
+          "part": "integer",
+          "tags": "string"
+        }
+      },
+      "lectures": {
+        "format": "parquet",
+        "compression": "snappy",
+        "required_columns": {
+          "lecture_id": "string",
+          "part": "integer",
+          "tags": "string"
+        }
+      }
+    },
+    "curated_zone": {
+      "aggregated_student_features": {
+        "format": "parquet",
+        "compression": "snappy",
+        "required_columns": {
+          "user_id": "string",
+          "accuracy_rate": "double",
+          "avg_response_time_ms": "double",
+          "total_interactions": "long",
+          "unique_questions_attempted": "long",
+          "unique_lectures_viewed": "long",
+          "active_days": "long"
+        },
+        "quality_gates": {
+          "max_null_ratio": 0.10,
+          "min_rows": 1,
+          "primary_key": "user_id"
+        }
+      },
+      "user_vectors": {
+        "format": "parquet",
+        "compression": "snappy",
+        "required_columns": {
+          "user_id": "string",
+          "accuracy_rate": "double",
+          "avg_response_time_ms": "double",
+          "total_interactions": "double",
+          "unique_questions_attempted": "double",
+          "unique_lectures_viewed": "double",
+          "active_days": "double"
+        }
+      },
+      "recommendations_batch": {
+        "format": "parquet",
+        "compression": "snappy",
+        "required_columns": {
+          "user_id": "string",
+          "recommended_user_id": "string",
+          "similarity_score": "double",
+          "rank": "integer"
+        },
+        "quality_gates": {
+          "max_null_ratio": 0.0,
+          "primary_key": ["user_id", "recommended_user_id"]
+        }
+      }
+    },
+    "serving_store": {
+      "recommendations": {
+        "engine": "postgresql",
+        "table": "recommendations",
+        "columns": {
+          "user_id": "VARCHAR(50) NOT NULL",
+          "recommended_user_id": "VARCHAR(50) NOT NULL",
+          "similarity_score": "DOUBLE PRECISION NOT NULL",
+          "rank": "INTEGER NOT NULL",
+          "generation_date": "DATE NOT NULL DEFAULT CURRENT_DATE"
+        },
+        "primary_key": ["user_id", "recommended_user_id"]
+      },
+      "student_features": {
+        "engine": "postgresql",
+        "table": "student_features",
+        "columns": {
+          "user_id": "VARCHAR(50) PRIMARY KEY",
+          "accuracy_rate": "DOUBLE PRECISION",
+          "avg_response_time_ms": "DOUBLE PRECISION",
+          "total_interactions": "INTEGER",
+          "unique_questions_attempted": "INTEGER",
+          "unique_lectures_viewed": "INTEGER",
+          "active_days": "INTEGER"
+        },
+        "primary_key": ["user_id"]
+      }
+    },
+    "api_response": {
+      "recommendations": {
+        "content_type": "application/json",
+        "fields": {
+          "user_id": "string",
+          "recommendations": [
+            {
+              "recommended_user_id": "string",
+              "similarity_score": "number (0.0 – 1.0)",
+              "rank": "integer"
+            }
+          ],
+          "count": "integer",
+          "generation_date": "string (ISO date)"
+        }
+      },
+      "student_features": {
+        "content_type": "application/json",
+        "fields": {
+          "user_id": "string",
+          "features": {
+            "accuracy_rate": "number",
+            "avg_response_time_ms": "number",
+            "total_interactions": "integer",
+            "unique_questions_attempted": "integer",
+            "unique_lectures_viewed": "integer",
+            "active_days": "integer"
+          }
+        }
+      }
+    }
+  }
+}

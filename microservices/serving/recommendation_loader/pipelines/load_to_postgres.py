@@ -1,5 +1,5 @@
 """
-Recommendation Loader – Pipeline Orchestrator.
+Recommendation Loader - Pipeline Orchestrator.
 
 Reads curated datasets from HDFS and loads them into PostgreSQL:
   1. recommendations_batch  → recommendations table
@@ -33,7 +33,7 @@ def _setup_logging() -> None:
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     logging.basicConfig(
         level=getattr(logging, log_level, logging.INFO),
-        format="%(asctime)s [%(levelname)s] %(name)s – %(message)s",
+        format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     )
 
 
@@ -70,7 +70,7 @@ def main() -> None:
     with open(args.config, "r") as f:
         cfg = yaml.safe_load(f)
 
-    logger.info("=== Recommendation Loader – START ===")
+    logger.info("=== Recommendation Loader - START ===")
 
     spark = _build_spark()
 
@@ -128,7 +128,7 @@ def main() -> None:
         logger.exception("[loader] Failed to load aggregated_student_features.")
         raise
 
-    logger.info("=== Recommendation Loader – COMPLETE ===")
+    logger.info("=== Recommendation Loader - COMPLETE ===")
     spark.stop()
 
 

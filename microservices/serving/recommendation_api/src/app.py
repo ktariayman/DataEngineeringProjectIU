@@ -1,5 +1,5 @@
 """
-Recommendation API – FastAPI Application Factory.
+Recommendation API - FastAPI Application Factory.
 
 Endpoints
 ---------
@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     logging.basicConfig(
         level=getattr(logging, log_level, logging.INFO),
-        format="%(asctime)s [%(levelname)s] %(name)s – %(message)s",
+        format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     )
     logger.info("Recommendation API starting up …")
     yield
