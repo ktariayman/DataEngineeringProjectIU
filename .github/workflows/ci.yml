@@ -42,135 +42,135 @@ jobs:
       - name: Run API tests
         run: pytest microservices/serving/recommendation_api/tests/ -v --tb=short
 
-  # # ── 2. Unit tests — Processing (PySpark) ──────────────────────────────
-  # test-processing:
-  #   name: "Test: Processing (Spark)"
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
+  # ── 2. Unit tests — Processing (PySpark) ──────────────────────────────
+  test-processing:
+    name: "Test: Processing (Spark)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - uses: actions/setup-java@v4
-  #       with:
-  #         java-version: "11"
-  #         distribution: temurin
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "11"
+          distribution: temurin
 
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.11"
-  #         cache: pip
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-  #     - name: Install PySpark + test deps
-  #       run: pip install "pyspark==3.5.1" pytest pyyaml pandas
+      - name: Install PySpark + test deps
+        run: pip install "pyspark==3.5.1" pytest pyyaml pandas
 
-  #     - name: Run processing tests
-  #       run: pytest microservices/processing/tests/ -v --tb=short
+      - name: Run processing tests
+        run: pytest microservices/processing/tests/ -v --tb=short
 
-  # # ── 3. Unit tests — Ingestion (PySpark) ───────────────────────────────
-  # test-ingestion:
-  #   name: "Test: Ingestion (Spark)"
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
+  # ── 3. Unit tests — Ingestion (PySpark) ───────────────────────────────
+  test-ingestion:
+    name: "Test: Ingestion (Spark)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - uses: actions/setup-java@v4
-  #       with:
-  #         java-version: "11"
-  #         distribution: temurin
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "11"
+          distribution: temurin
 
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.11"
-  #         cache: pip
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-  #     - name: Install PySpark + test deps
-  #       run: pip install "pyspark==3.5.1" pytest pyyaml pandas
+      - name: Install PySpark + test deps
+        run: pip install "pyspark==3.5.1" pytest pyyaml pandas
 
-  #     - name: Run ingestion tests
-  #       run: pytest microservices/ingestion/tests/ -v --tb=short
+      - name: Run ingestion tests
+        run: pytest microservices/ingestion/tests/ -v --tb=short
 
-  # # ── 4. Unit tests — Storage (PySpark) ────────────────────────────────
-  # test-storage:
-  #   name: "Test: Storage (Spark)"
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
+  # ── 4. Unit tests — Storage (PySpark) ────────────────────────────────
+  test-storage:
+    name: "Test: Storage (Spark)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - uses: actions/setup-java@v4
-  #       with:
-  #         java-version: "11"
-  #         distribution: temurin
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "11"
+          distribution: temurin
 
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.11"
-  #         cache: pip
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-  #     - name: Install PySpark + test deps
-  #       run: pip install "pyspark==3.5.1" pytest pyyaml
+      - name: Install PySpark + test deps
+        run: pip install "pyspark==3.5.1" pytest pyyaml
 
-  #     - name: Run storage tests
-  #       run: pytest microservices/storage/tests/ -v --tb=short
+      - name: Run storage tests
+        run: pytest microservices/storage/tests/ -v --tb=short
 
-  # # ── 5. Unit tests — Recommendation Loader (lightweight) ───────────────
-  # test-loader:
-  #   name: "Test: Serving — recommendation_loader"
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
+  # ── 5. Unit tests — Recommendation Loader (lightweight) ───────────────
+  test-loader:
+    name: "Test: Serving — recommendation_loader"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.11"
-  #         cache: pip
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-  #     - name: Install dependencies
-  #       run: pip install psycopg2-binary pytest pyyaml
+      - name: Install dependencies
+        run: pip install psycopg2-binary pytest pyyaml
 
-  #     - name: Run loader tests
-  #       run: pytest microservices/serving/recommendation_loader/tests/ -v --tb=short
+      - name: Run loader tests
+        run: pytest microservices/serving/recommendation_loader/tests/ -v --tb=short
 
-  # # ── 6. Build all Docker images (no push) — verifies Dockerfiles are valid ─
-  # build-images:
-  #   name: "Build Docker Images"
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
+  # ── 6. Build all Docker images (no push) — verifies Dockerfiles are valid ─
+  build-images:
+    name: "Build Docker Images"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-  #     - name: Build recommendation-api
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         context: microservices/serving/recommendation_api
-  #         file: microservices/serving/recommendation_api/docker/Dockerfile
-  #         push: false
-  #         cache-from: type=gha,scope=recommendation-api
-  #         cache-to: type=gha,mode=max,scope=recommendation-api
+      - name: Build recommendation-api
+        uses: docker/build-push-action@v6
+        with:
+          context: microservices/serving/recommendation_api
+          file: microservices/serving/recommendation_api/docker/Dockerfile
+          push: false
+          cache-from: type=gha,scope=recommendation-api
+          cache-to: type=gha,mode=max,scope=recommendation-api
 
-  #     - name: Build recommendation-loader
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         context: microservices/serving/recommendation_loader
-  #         file: microservices/serving/recommendation_loader/docker/Dockerfile
-  #         push: false
-  #         cache-from: type=gha,scope=recommendation-loader
-  #         cache-to: type=gha,mode=max,scope=recommendation-loader
+      - name: Build recommendation-loader
+        uses: docker/build-push-action@v6
+        with:
+          context: microservices/serving/recommendation_loader
+          file: microservices/serving/recommendation_loader/docker/Dockerfile
+          push: false
+          cache-from: type=gha,scope=recommendation-loader
+          cache-to: type=gha,mode=max,scope=recommendation-loader
 
-  #     - name: Build ingestion
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         context: microservices/ingestion
-  #         file: microservices/ingestion/docker/Dockerfile
-  #         push: false
-  #         cache-from: type=gha,scope=ingestion
-  #         cache-to: type=gha,mode=max,scope=ingestion
+      - name: Build ingestion
+        uses: docker/build-push-action@v6
+        with:
+          context: microservices/ingestion
+          file: microservices/ingestion/docker/Dockerfile
+          push: false
+          cache-from: type=gha,scope=ingestion
+          cache-to: type=gha,mode=max,scope=ingestion
 
-  #     - name: Build processing
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         context: microservices/processing
-  #         file: microservices/processing/docker/Dockerfile
-  #         push: false
-  #         cache-from: type=gha,scope=processing
-  #         cache-to: type=gha,mode=max,scope=processing
+      - name: Build processing
+        uses: docker/build-push-action@v6
+        with:
+          context: microservices/processing
+          file: microservices/processing/docker/Dockerfile
+          push: false
+          cache-from: type=gha,scope=processing
+          cache-to: type=gha,mode=max,scope=processing
