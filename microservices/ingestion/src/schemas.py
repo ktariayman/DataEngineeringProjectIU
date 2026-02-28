@@ -42,8 +42,8 @@ SCHEMA_VERSIONS: dict[str, str] = {
 
 # ═══════════════════════════════════════════════════════════════════════════
 # KT4 – per-user interaction logs  (TSV, one file per user)
-# Columns: timestamp, action_type, item_id, cursor_time, source,
-#           user_answer, platform
+# Columns: timestamp, action_type, item_id, source, user_answer,
+#           platform, elapsed_time
 # (actual EdNet KT4 format: https://github.com/riiid/ednet#kt4)
 # ═══════════════════════════════════════════════════════════════════════════
 KT4_SCHEMA = StructType(
@@ -51,10 +51,10 @@ KT4_SCHEMA = StructType(
         StructField("timestamp", LongType(), nullable=False),
         StructField("action_type", StringType(), nullable=False),
         StructField("item_id", StringType(), nullable=False),
-        StructField("cursor_time", LongType(), nullable=True),
         StructField("source", StringType(), nullable=True),
         StructField("user_answer", StringType(), nullable=True),
         StructField("platform", StringType(), nullable=True),
+        StructField("elapsed_time", LongType(), nullable=True),
     ]
 )
 
