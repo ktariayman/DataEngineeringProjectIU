@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .database import get_connection
+from . import database
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def get_recommendations(user_id: str, top_k: int = 10) -> list[dict[str, Any]]:
         ORDER BY rank ASC
         LIMIT %s
     """
-    with get_connection() as conn:
+    with database.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query, (user_id, top_k))
             rows = cur.fetchall()
@@ -65,7 +65,7 @@ def get_student_features(user_id: str) -> dict[str, Any] | None:
         FROM student_features
         WHERE user_id = %s
     """
-    with get_connection() as conn:
+    with database.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query, (user_id,))
             row = cur.fetchone()
