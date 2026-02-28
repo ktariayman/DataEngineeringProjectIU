@@ -44,7 +44,7 @@ def aggregate_student_features(df: DataFrame) -> DataFrame:
     ----------
     df : DataFrame
         Enriched interactions (output of :func:`enrich_interactions`).
-        Must contain: user_id, action_type, item_id, cursor_time,
+        Must contain: user_id, action_type, item_id, elapsed_time,
         event_date, is_correct, response_time_ms, part.
 
     Returns
@@ -78,8 +78,8 @@ def aggregate_student_features(df: DataFrame) -> DataFrame:
             when(respond_filter, col("response_time_ms"))
         ).alias("avg_response_time_ms"),
 
-        # Total cursor time (sum of response times)
-        _sum(col("cursor_time")).alias("total_elapsed_time_ms"),
+        # Total elapsed time (sum of elapsed times)
+        _sum(col("elapsed_time")).alias("total_elapsed_time_ms"),
 
         # Distinct counts
         countDistinct(

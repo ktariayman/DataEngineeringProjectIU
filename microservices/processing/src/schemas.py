@@ -51,7 +51,7 @@ KT4_INPUT_SCHEMA = StructType([
     StructField("source", StringType(), nullable=True),
     StructField("user_answer", StringType(), nullable=True),
     StructField("platform", StringType(), nullable=True),
-    StructField("cursor_time", LongType(), nullable=True),
+    StructField("elapsed_time", LongType(), nullable=True),
     StructField("event_date", StringType(), nullable=True),
 ])
 
@@ -82,7 +82,7 @@ ENRICHED_INTERACTION_SCHEMA = StructType([
     StructField("source", StringType(), nullable=True),
     StructField("user_answer", StringType(), nullable=True),
     StructField("platform", StringType(), nullable=True),
-    StructField("cursor_time", LongType(), nullable=True),
+    StructField("elapsed_time", LongType(), nullable=True),
     StructField("event_date", StringType(), nullable=True),
     StructField("correct_answer", StringType(), nullable=True),
     StructField("part", IntegerType(), nullable=True),
