@@ -10,7 +10,7 @@ LABEL maintainer="data-engineering-team" \
 USER root
 
 # ── System deps ────────────────────────────────────────────────────────
-RUN --network=host apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
@@ -18,7 +18,7 @@ WORKDIR /app
 
 # ── Python deps (cached layer) ────────────────────────────────────────
 COPY requirements.txt .
-RUN --network=host pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # ── Application code (selective copy) ─────────────
 COPY config/  /app/microservices/ingestion/config/
