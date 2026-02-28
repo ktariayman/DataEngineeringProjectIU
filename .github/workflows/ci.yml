@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop,test]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop,test]
 
 # Set project root on Python path for all jobs — fixes "No module named 'microservices'"
 env:
