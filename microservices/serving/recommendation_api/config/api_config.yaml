@@ -1,0 +1,17 @@
+##############################################################################
+# Recommendation API – Configuration
+##############################################################################
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+postgres:
+  host: "postgres"
+  port: 5432
+  database: "recommendations"
+
+# ── Defaults ─────────────────────────────────────────────────────────────
+defaults:
+  top_k: 10                 # default number of recommendations to return
+  max_top_k: 50             # maximum allowed top_k from query param

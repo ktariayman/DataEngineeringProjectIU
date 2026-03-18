@@ -25,11 +25,11 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 def _get_secret() -> str:
-    secret = os.environ.get("JWT_SECRET", "changeme")
-    if secret == "changeme":
-        logger.warning(
-            "JWT_SECRET is set to the default value. "
-            "Set a strong secret in production via the JWT_SECRET environment variable."
+    secret = os.environ.get("JWT_SECRET", "")
+    if not secret:
+        raise RuntimeError(
+            "JWT_SECRET environment variable is not set. "
+            "Generate one with: openssl rand -hex 32"
         )
     return secret
 

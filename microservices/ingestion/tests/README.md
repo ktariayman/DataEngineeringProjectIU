@@ -1,11 +1,19 @@
-# Run a single test file with verbose output and print statements visible
-pytest test_checksum.py -v -s
+# Ingestion Tests
 
-# Run all tests in the directory
+Unit tests for the ingestion microservice.
+
+## Running Tests
+
+```bash
+# All tests
 pytest -v -s
 
-# Run specific test class
+# Single file
+pytest test_checksum.py -v -s
+
+# Single class
 pytest test_checksum.py::TestSha256File -v -s
 
-# Run specific test method
+# Single method
 pytest test_checksum.py::TestSha256File::test_deterministic -v -s
+```

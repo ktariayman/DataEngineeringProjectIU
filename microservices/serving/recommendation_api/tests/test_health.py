@@ -2,76 +2,54 @@
 Unit tests for GET /health
 
 Rules:
-  - Always HTTP 200 (Reliability NFR)
-  - Returns {"status": "ok", "db": "ok"} when DB is reachable
-  - Returns {"status": "degraded", "db": "unavailable"} when DB probe fails
+  - Returns 200 + {"status": "healthy"} when the DB is reachable
+  - Returns 503 when the DB is unreachable
+
+All tests target the live ``app.py`` entrypoint (sync / psycopg2).
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
-from microservices.serving.recommendation_api.src.main import create_app
+from microservices.serving.recommendation_api.src.app import app
 
 
 @pytest.fixture()
 def client():
-    app = create_app()
-    # Skip lifespan (no real DB in unit tests)
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
 
 
 def test_health_ok(client):
-    """Health returns 200 + ok when DB pool probe succeeds."""
-    mock_conn = AsyncMock()
-    mock_conn.fetchval = AsyncMock(return_value=1)
-    mock_pool = MagicMock()
-    mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
-    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+    """Health returns 200 + healthy when DB is reachable."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (1,)
+    mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 
     with patch(
-        "microservices.serving.recommendation_api.src.routes.health._pool",
-        mock_pool,
-    ):
+        "microservices.serving.recommendation_api.src.routes.recommendations.get_connection",
+    ) as mock_get_conn:
+        mock_get_conn.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_get_conn.return_value.__exit__ = MagicMock(return_value=False)
         resp = client.get("/health")
 
     assert resp.status_code == 200
     body = resp.json()
-    assert body["status"] == "ok"
-    assert body["db"] == "ok"
+    assert body["status"] == "healthy"
 
 
-def test_health_degraded_when_db_unreachable(client):
-    """Health returns 200 (not 500) + degraded when DB is down."""
-    mock_pool = MagicMock()
-    mock_pool.acquire.return_value.__aenter__ = AsyncMock(
-        side_effect=ConnectionRefusedError("DB is down")
-    )
-    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
-
+def test_health_503_when_db_unreachable(client):
+    """Health returns 503 when DB is down."""
     with patch(
-        "microservices.serving.recommendation_api.src.routes.health._pool",
-        mock_pool,
+        "microservices.serving.recommendation_api.src.routes.recommendations.get_connection",
+        side_effect=ConnectionRefusedError("DB is down"),
     ):
         resp = client.get("/health")
 
-    assert resp.status_code == 200  # still 200 — Reliability NFR
-    body = resp.json()
-    assert body["status"] == "degraded"
-    assert body["db"] == "unavailable"
-
-
-def test_health_degraded_when_pool_none(client):
-    """Health returns degraded when pool has not been initialised yet."""
-    with patch(
-        "microservices.serving.recommendation_api.src.routes.health._pool",
-        None,
-    ):
-        resp = client.get("/health")
-
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "degraded"
+    assert resp.status_code == 503

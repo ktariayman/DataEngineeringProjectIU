@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  HDFS Core Site Configuration – Storage Microservice
+  Governance: central FS endpoint for all zone paths.
+-->
+<configuration>
+    <!-- Default filesystem – all zone paths resolve against this -->
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://namenode:9000</value>
+    </property>
+
+    <!-- Reliability: connection timeout (tolerate slow start) -->
+    <property>
+        <name>ipc.client.connect.timeout</name>
+        <value>20000</value>
+    </property>
+
+    <!-- Reliability: RPC retry on connection failure -->
+    <property>
+        <name>ipc.client.connect.max.retries.on.timeouts</name>
+        <value>5</value>
+    </property>
+
+    <!-- Security: disable permission checking only in local dev -->
+    <property>
+        <name>hadoop.security.authentication</name>
+        <value>simple</value>
+    </property>
+
+    <!-- Scalability: I/O buffer size (128 KB) -->
+    <property>
+        <name>io.file.buffer.size</name>
+        <value>131072</value>
+    </property>
+</configuration>

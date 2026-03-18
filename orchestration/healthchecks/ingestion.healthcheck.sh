@@ -1,27 +1,28 @@
 #!/bin/sh
-# Healthcheck: Ingestion Spark job (batch service)
+##############################################################################
+# Healthcheck – Ingestion Spark Job (batch service)
+# Method : Verify Spark driver PID, or treat clean exit as healthy
+# Exit   : 0 = healthy / clean exit, 1 = driver died unexpectedly
+##############################################################################
 # The ingestion service is a batch job, not a long-running daemon.
-# A clean exit (exit 0 from the container) is treated as healthy.
-# If the process is still running, we verify the Spark driver is alive.
-# Exit 0 = healthy / clean exit, 1 = driver process dead unexpectedly
+# A clean exit (exit 0) from the container is treated as healthy.
 
 set -e
 
-# If a Spark driver PID file exists, verify the process is still alive.
+# ── Verify Spark driver PID ────────────────────────────────────────────────
 SPARK_PID_FILE="/tmp/spark-driver.pid"
 
 if [ -f "$SPARK_PID_FILE" ]; then
   PID=$(cat "$SPARK_PID_FILE")
   if kill -0 "$PID" 2>/dev/null; then
-    echo "Ingestion Spark driver is alive (PID $PID)"
+    echo "[healthcheck] Ingestion Spark driver → alive (PID $PID)"
     exit 0
   else
-    echo "Ingestion Spark driver PID $PID is no longer running"
+    echo "[healthcheck] Ingestion Spark driver → DEAD (PID $PID)"
     exit 1
   fi
 fi
 
-# No PID file means the job completed or hasn't started yet.
-# A completed batch job with clean exit is healthy.
-echo "Ingestion: no active Spark driver (job completed or not started)"
+# No PID file → job completed or has not started yet.
+echo "[healthcheck] Ingestion → no active Spark driver (completed / not started)"
 exit 0

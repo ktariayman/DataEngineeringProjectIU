@@ -25,6 +25,10 @@ COPY config/  /app/microservices/ingestion/config/
 COPY src/     /app/microservices/ingestion/src/
 COPY pipelines/ /app/microservices/ingestion/pipelines/
 
+# ── Create __init__.py along the package hierarchy for Python imports ────
+RUN touch /app/microservices/__init__.py \
+    /app/microservices/ingestion/__init__.py
+
 # ── Health check (Docker HEALTHCHECK instruction) ─────────────────────
 COPY docker/healthcheck.py /app/healthcheck.py
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \

@@ -13,6 +13,8 @@ References
 - Contents   : https://github.com/riiid/ednet#contents
 """
 
+from __future__ import annotations
+
 from pyspark.sql.types import (
     StructType,
     StructField,
@@ -42,6 +44,7 @@ SCHEMA_VERSIONS: dict[str, str] = {
 # KT4 – per-user interaction logs  (TSV, one file per user)
 # Columns: timestamp, action_type, item_id, source, user_answer,
 #           platform, elapsed_time
+# (actual EdNet KT4 format: https://github.com/riiid/ednet#kt4)
 # ═══════════════════════════════════════════════════════════════════════════
 KT4_SCHEMA = StructType(
     [
@@ -100,3 +103,14 @@ ALLOWED_COLUMNS: dict[str, list[str]] = {
     name: [f.name for f in schema.fields]
     for name, schema in SCHEMA_REGISTRY.items()
 }
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Derived columns to add to KT4 for downstream use cases  (Privacy)
+# 
+# event_date is derived from timestamp by the file_intake step (_add_event_date)
+# and is required for HDFS partitioning.
+# user_id is derived from the source filename (u<id>.csv) by _add_user_id
+# and is required for all downstream aggregations.
+# Neither contains PII so both are safe to keep through the privacy guardrail.
+# ═══════════════════════════════════════════════════════════════════════════
+ALLOWED_COLUMNS["kt4"] = [f.name for f in KT4_SCHEMA.fields] + ["event_date", "user_id"]

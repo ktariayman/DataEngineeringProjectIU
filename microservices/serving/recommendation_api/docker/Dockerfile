@@ -1,57 +1,51 @@
+##############################################################################
+# Recommendation API – Docker Image
+#
+# Base       : Python 3.11 slim
+# Entrypoint : uvicorn serving the FastAPI app
+# Security   : Runs as non-root user (appuser, UID 1000)
+##############################################################################
+
 FROM python:3.11-slim
 
-# ── Image metadata ────────────────────────────────────────────────────
-ARG IMAGE_VERSION=1.0.0
-LABEL maintainer="data-engineering-team" \
-      version="${IMAGE_VERSION}" \
-      description="Recommendation API — FastAPI + asyncpg" \
-      org.opencontainers.image.source="microservices/serving/recommendation_api"
+LABEL maintainer="ednet-team"
+LABEL service="recommendation-api"
+LABEL version="1.0.0"
 
-USER root
-
-# ── System deps ───────────────────────────────────────────────────────
-# curl: needed by the Docker HEALTHCHECK instruction
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r -g 1000 appuser && useradd -r -u 1000 -g appuser -m appuser
 
 WORKDIR /app
 
-# ── Python deps (cached layer — only re-runs when requirements change) ─
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# ── Python dependencies ──────────────────────────────────────────────────
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
-# ── Application code ──────────────────────────────────────────────────
+# ── Application code ─────────────────────────────────────────────────────
 COPY src/ /app/microservices/serving/recommendation_api/src/
+COPY config/ /app/microservices/serving/recommendation_api/config/
 
-# Need an __init__.py chain for the imports to resolve correctly
-RUN mkdir -p /app/microservices/serving/recommendation_api \
-    && touch /app/microservices/__init__.py \
-    && touch /app/microservices/serving/__init__.py \
-    && touch /app/microservices/serving/recommendation_api/__init__.py \
-    && touch /app/microservices/serving/recommendation_api/src/__init__.py \
-    && touch /app/microservices/serving/recommendation_api/src/routes/__init__.py \
-    && touch /app/microservices/serving/recommendation_api/src/services/__init__.py \
-    && touch /app/microservices/serving/recommendation_api/src/schemas/__init__.py
+# ── Create __init__.py along the package hierarchy for uvicorn import ────
+RUN touch /app/microservices/__init__.py \
+    /app/microservices/serving/__init__.py \
+    /app/microservices/serving/recommendation_api/__init__.py
 
-# ── Security: non-root user (UID 1000 matches compose user: "1000:1000") ─
-RUN groupadd -r -g 1000 apiuser && useradd -r -u 1000 -g apiuser -d /app apiuser \
-    && chown -R apiuser:apiuser /app
-USER apiuser
+# ── Permissions ──────────────────────────────────────────────────────────
+RUN chown -R appuser:appuser /app
 
-# ── Health check (used by Docker and depends_on) ──────────────────────
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+USER appuser
 
-# ── Runtime ───────────────────────────────────────────────────────────
-EXPOSE 8000
-ENV PYTHONPATH=/app \
-    PYTHONUNBUFFERED=1 \
+ENV PYTHONUNBUFFERED=1 \
     LOG_LEVEL=INFO
 
-# Uvicorn with 2 workers — single node, no cluster needed at the moment
+EXPOSE 8000
+
+# ── Entrypoint ───────────────────────────────────────────────────────────
 CMD ["uvicorn", \
-     "microservices.serving.recommendation_api.src.main:app", \
+     "microservices.serving.recommendation_api.src.app:app", \
      "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--workers", "2", \
-     "--log-level", "info"]
+     "--port", "8000"]

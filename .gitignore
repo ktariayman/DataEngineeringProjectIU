@@ -78,4 +78,4 @@ data_lake/**
 serving_store/postgres/data/**
 
 # Keep placeholder files to preserve hierarchy
-!**/.gitkeep
+! */.gitkeep

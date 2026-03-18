@@ -1,114 +1,82 @@
 """
-GET /v1/recommendations/me — main recommendation endpoint.
-
-Contract (from architecture diagram):
-  - Auth: Bearer JWT required (Security NFR)
-  - Reads from PostgreSQL recommendations table (Serving Store)
-  - Returns JSON (Privacy NFR: IDs + score only)
-  - Graceful degradation: empty list on no rows — never 500 (Reliability NFR)
-  - Scalability: queries hit ix_rec_user_date index (user_id, generation_date DESC)
+Recommendation API - route definitions.
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import date
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-import asyncpg
-from fastapi import APIRouter, Depends, Query
-
-from microservices.serving.recommendation_api.src.schemas.recommendation import (
-    RecommendationItem,
+from ..schemas import (
     RecommendationsResponse,
+    RecommendationItem,
+    StudentFeaturesResponse,
+    HealthResponse,
 )
-from microservices.serving.recommendation_api.src.services.auth import get_current_user
-from microservices.serving.recommendation_api.src.services.db import get_db
+from ..services.auth import get_current_user
+from ..services.recommendation_service import get_recommendations, get_student_features
+from ..services.database import get_connection
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["recommendations"])
+router = APIRouter()
 
-_MAX_LIMIT = 100
-_DEFAULT_LIMIT = 20
+
+@router.get("/health", response_model=HealthResponse, tags=["Health"])
+def health_check():
+    """Liveness / readiness probe. No auth required (used by Docker healthcheck)."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+        return HealthResponse(status="healthy")
+    except Exception as exc:
+        logger.error("[health] Database unreachable: %s", exc)
+        raise HTTPException(status_code=503, detail="Database unreachable")
 
 
 @router.get(
-    "/recommendations/me",
+    "/recommendations/{user_id}",
     response_model=RecommendationsResponse,
-    summary="Get recommendations for the authenticated user",
-    description=(
-        "Returns the top-K precomputed collaborative-filtering recommendations "
-        "for the currently authenticated learner. Results are ordered by similarity "
-        "score descending. If no recommendations are available yet, returns an empty list."
-    ),
+    tags=["Recommendations"],
 )
-async def get_my_recommendations(
-    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT, description="Max results to return"),
-    generation_date: Optional[date] = Query(
-        default=None,
-        description="Filter by specific generation date (YYYY-MM-DD). Defaults to the most recent batch.",
-    ),
-    user_id: str = Depends(get_current_user),
-    db: asyncpg.Connection = Depends(get_db),
-) -> RecommendationsResponse:
-    """
-    Retrieve recommendations for the requesting user.
-
-    If generation_date is not specified, returns results from the most recent batch.
-    """
-    if generation_date is not None:
-        # Specific date requested — fetch that exact batch
-        rows = await db.fetch(
-            """
-            SELECT recommended_user_id, similarity_score, generation_date
-            FROM   recommendations
-            WHERE  user_id = $1
-              AND  generation_date = $2
-            ORDER  BY similarity_score DESC
-            LIMIT  $3
-            """,
-            user_id,
-            generation_date,
-            limit,
+def fetch_recommendations(
+    user_id: str,
+    top_k: int = Query(default=10, ge=1, le=50, description="Number of recommendations"),
+    current_user: str = Depends(get_current_user),
+):
+    """Return top-K similar students for a given user. **Requires Bearer JWT issued for that user.**"""
+    if current_user != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied.",
         )
-    else:
-        # Default: return the latest batch (most recent generation_date)
-        rows = await db.fetch(
-            """
-            SELECT recommended_user_id, similarity_score, generation_date
-            FROM   recommendations
-            WHERE  user_id = $1
-              AND  generation_date = (
-                  SELECT MAX(generation_date)
-                  FROM   recommendations
-                  WHERE  user_id = $1
-              )
-            ORDER  BY similarity_score DESC
-            LIMIT  $2
-            """,
-            user_id,
-            limit,
-        )
-
-    results = [
-        RecommendationItem(
-            recommended_user_id=row["recommended_user_id"],
-            similarity_score=row["similarity_score"],
-            generation_date=row["generation_date"],
-        )
-        for row in rows
-    ]
-
-    logger.info(
-        "Served %d recommendations for user=%s generation_date=%s",
-        len(results),
-        user_id,
-        results[0].generation_date if results else "N/A",
-    )
-
+    results = get_recommendations(user_id, top_k=top_k)
+    if not results:
+        raise HTTPException(status_code=404, detail=f"No recommendations found for user '{user_id}'.")
     return RecommendationsResponse(
         user_id=user_id,
+        recommendations=[RecommendationItem(**r) for r in results],
         count=len(results),
-        results=results,
     )
+
+
+@router.get(
+    "/students/{user_id}/features",
+    response_model=StudentFeaturesResponse,
+    tags=["Students"],
+)
+def fetch_student_features(
+    user_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Return aggregated learning features for a given student. **Requires Bearer JWT issued for that user.**"""
+    if current_user != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied.",
+        )
+    features = get_student_features(user_id)
+    if features is None:
+        raise HTTPException(status_code=404, detail=f"No features found for user '{user_id}'.")
+    return StudentFeaturesResponse(**features)

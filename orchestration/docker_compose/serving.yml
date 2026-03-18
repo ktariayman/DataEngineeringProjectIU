@@ -1,21 +1,27 @@
-# Serving Layer — PostgreSQL + Recommendation Loader + Recommendation API
-#
-# Architecture note: The diagram labels "Serving Microservice (Docker Compose - 2 containers)"
-# referring to recommendation_loader + recommendation_api.
-# PostgreSQL (Serving Store) lives in this same file for startup-order reasons
-# (both serving containers depend_on postgres:healthy).
+##############################################################################
+# Orchestration – Serving Layer
+# Services : PostgreSQL 14 · Recommendation Loader · Recommendation API
+# Network  : uni_net (external bridge)
+##############################################################################
+
+# ── Design Note ────────────────────────────────────────────────────────────
+# The architecture diagram labels "Serving Microservice (2 containers)"
+# referring to recommendation_loader + recommendation_api.  PostgreSQL
+# (Serving Store) is co-located in this file because both serving
+# containers depend on postgres:healthy for startup ordering.
 
 services:
 
+  # ── PostgreSQL (Serving Store) ───────────────────────────────────────────
   postgres:
     image: postgres:14
     container_name: postgres
-    restart: unless-stopped
+    restart: unless-stopped               # always-on infrastructure service
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB:-recommendations}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -29,13 +35,15 @@ services:
     networks:
       - uni_net
 
+  # ── Recommendation Loader (batch job) ────────────────────────────────────
   recommendation_loader:
     build:
       context: ../../microservices/serving/recommendation_loader
       dockerfile: docker/Dockerfile
-    image: uni/recommendation-loader:1.0.0   # Versioned image (architecture: versioned images)
+      network: host  # Use host network for faster downloads during build
+    image: uni/recommendation-loader:1.0.0  # versioned image (Maintainability)
     container_name: recommendation_loader
-    user: "1000:1000"                         # Non-root container (Security NFR)
+    user: "1000:1000"                       # non-root container (Security)
     # No restart policy — triggered by scheduler after processing completes.
     environment:
       - HDFS_URL=hdfs://namenode:9000
@@ -43,7 +51,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-recommendations}
-      - MODE=${MODE:-daily}     # 'initial' (Script A) | 'daily' (Script B)
+      - MODE=${MODE:-incremental}
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,25 +60,27 @@ services:
     networks:
       - uni_net
 
+  # ── Recommendation API (always-on) ──────────────────────────────────────
   recommendation_api:
     build:
       context: ../../microservices/serving/recommendation_api
       dockerfile: docker/Dockerfile
-    image: uni/recommendation-api:1.0.0      # Versioned image (architecture: versioned images)
+      network: host  # Use host network for faster downloads during build
+    image: uni/recommendation-api:1.0.0     # versioned image (Maintainability)
     container_name: recommendation_api
-    restart: unless-stopped
-    # NOTE: HTTPS (Security NFR) — TLS must be terminated at the reverse proxy
-    # layer (e.g. nginx / Traefik) in front of this container on port 443.
-    # In local dev, HTTP on port 8000 is acceptable.
+    restart: unless-stopped                 # always-on service
+    # NOTE (Security): TLS must be terminated at the reverse proxy layer
+    # (e.g. nginx / Traefik) in production.  HTTP on port 8000 is acceptable
+    # in local development only.
     ports:
       - "8000:8000"
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB:-recommendations}
-      - JWT_SECRET=${JWT_SECRET:-changeme}
-      - API_KEY=${API_KEY:-dev-api-key}   # Shared key for POST /v1/auth/token
+      - JWT_SECRET=${JWT_SECRET}
+      - API_KEY=${API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,9 +93,11 @@ services:
     networks:
       - uni_net
 
+# ── Persistent Volumes ────────────────────────────────────────────────────
 volumes:
   postgres_data:
 
+# ── Network (external) ────────────────────────────────────────────────────
 networks:
   uni_net:
     external: true

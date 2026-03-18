@@ -47,10 +47,10 @@ spark:
 # ── Source CSV locations (local / mounted volume) ──────────────────────────
 sources:
   kt4:
-    path: "EdNet-KT4/"              # directory of per-user CSVs
+    path: "EdNet-KT4/"                    # directory of per-user CSVs
     glob_pattern: "*.csv"
     has_header: true
-    delimiter: "\t"                       # EdNet KT files are TSV
+    delimiter: ","                        # EdNet KT4 files are CSV (comma-separated)
     encoding: "utf-8"
 
   lectures:
@@ -124,4 +124,4 @@ privacy:
 lineage:
   enabled: true
   output_dir: "lineage"                   # local dir for JSON lineage records
-  pipeline_version: "1.0.0"              # semver — bump on pipeline changes
+  pipeline_version: "1.0.0"               # semver — bump on pipeline changes

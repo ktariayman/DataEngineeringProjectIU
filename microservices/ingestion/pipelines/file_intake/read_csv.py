@@ -16,7 +16,7 @@ from pathlib import Path
 
 import yaml
 from pyspark.sql import DataFrame
-from pyspark.sql.functions import col, from_unixtime, to_date
+from pyspark.sql.functions import col, from_unixtime, input_file_name, regexp_extract, to_date
 
 _project_root = str(Path(__file__).resolve().parents[4])
 if _project_root not in sys.path:
@@ -38,6 +38,19 @@ def _add_event_date(df: DataFrame) -> DataFrame:
     return df.withColumn(
         "event_date",
         to_date(from_unixtime(col("timestamp") / 1000)),
+    )
+
+
+def _add_user_id(df: DataFrame) -> DataFrame:
+    """Derive ``user_id`` from the source file path.
+
+    EdNet KT4 files are named ``u<id>.csv`` where ``<id>`` is the user
+    identifier.  ``input_file_name()`` returns the full file URI at read time;
+    we extract the stem (e.g. ``u123`` from ``.../u123.csv``).
+    """
+    return df.withColumn(
+        "user_id",
+        regexp_extract(input_file_name(), r"/(u\d+)\.csv", 1),
     )
 
 
@@ -69,6 +82,7 @@ def read_all_sources(config_path: str) -> dict[str, DataFrame]:
             delimiter=src_kt4.get("delimiter", "\t"),
         )
         kt4_df = _add_event_date(kt4_df)
+        kt4_df = _add_user_id(kt4_df)
         dataframes["kt4"] = kt4_df
     except Exception as exc:
         logger.error("[file_intake] FAILED to read 'kt4': %s", exc)
